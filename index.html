@@ -3,38 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام الخزينة المبسط</title>
-    <!-- jsPDF Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <title>نظام الخزينة</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f4f7f9; color: #333; margin: 0; padding: 0; direction: rtl; }
-        .top-nav { background-color: #34495e; padding: 10px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .top-nav button { background-color: #3498db; color: white; border: none; padding: 10px 20px; cursor: pointer; font-size: 1rem; margin: 0 5px; border-radius: 4px; transition: background-color 0.3s; }
-        .top-nav button:hover { background-color: #2980b9; }
-        .top-nav button.active { background-color: #e67e22; }
-        .view { padding: 20px; }
-        main { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-bottom: 20px; }
-        section { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        h1, h2 { color: #2c3e50; border-bottom: 2px solid #e0e0e0; padding-bottom: 10px; margin-top: 0; }
-        form { display: flex; flex-direction: column; gap: 10px; }
-        input, select, textarea, button { font-size: 1rem; padding: 10px; border-radius: 4px; border: 1px solid #ccc; width: 100%; box-sizing: border-box; }
-        button { background-color: #3498db; color: white; cursor: pointer; border: none; }
-        .list-container { margin-top: 15px; }
-        .list-item { background-color: #f9f9f9; padding: 10px; border-radius: 4px; margin-bottom: 8px; border-right: 4px solid #3498db; display: flex; justify-content: space-between; align-items: center; }
-        .report-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom:20px; }
-        .card { background-color: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; }
-        .card h4 { margin-top: 0; }
-        .card p { font-size: 1.8em; font-weight: bold; }
+        body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; background-color: #f0f2f5; color: #1c1e21; margin: 0; padding: 0; direction: rtl; }
+        .top-nav { background-color: #ffffff; padding: 10px 20px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-bottom: 1px solid #dddfe2; display: flex; justify-content: center; gap: 10px; }
+        .top-nav button { background-color: #e4e6eb; color: #4b4f56; border: none; padding: 10px 20px; cursor: pointer; font-size: 1rem; font-weight: bold; border-radius: 6px; transition: background-color 0.2s; }
+        .top-nav button:hover { background-color: #d8dadf; }
+        .top-nav button.active { background-color: #1877f2; color: white; }
+        .view { padding: 20px; max-width: 1200px; margin: 0 auto; }
+        main { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        section { background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        h1, h2 { color: #1877f2; border-bottom: 1px solid #dddfe2; padding-bottom: 10px; margin-top: 0; font-size: 1.5rem; }
+        form { display: flex; flex-direction: column; gap: 12px; }
+        input, select, textarea, button { font-size: 1rem; padding: 12px; border-radius: 6px; border: 1px solid #dddfe2; width: 100%; box-sizing: border-box; }
+        button[type="submit"] { background-color: #1877f2; color: white; cursor: pointer; border: none; font-weight: bold; }
+        .list-container { margin-top: 15px; max-height: 300px; overflow-y: auto; padding-right: 10px; }
+        .list-item { background-color: #f0f2f5; padding: 10px; border-radius: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .report-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .card { background-color: #ffffff; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        .card h4 { margin-top: 0; font-size: 1rem; color: #606770; }
+        .card p { font-size: 2rem; font-weight: bold; color: #1c1e21; }
         .types-display { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .types-display h3 { margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-        #filter-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); align-items: end; gap: 10px; }
-        #filter-reset-btn { background-color: #e74c3c; }
-        .btn-print { background-color: #95a5a6; padding: 5px 10px; font-size: 0.9rem; margin-top: 5px; }
+        #filter-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); align-items: end; gap: 10px; padding: 15px; background-color: #f0f2f5; border-radius: 8px; }
+        #filter-reset-btn { background-color: #e74c3c; color: white; font-weight: bold; }
+        .btn-print { background-color: #6c757d; color: white; padding: 5px 10px; font-size: 0.8rem; margin-top: 5px; }
     </style>
 </head>
 <body>
-    <!-- The HTML body is the same as before -->
     <nav class="top-nav">
         <button id="nav-main" class="active">الرئيسية</button>
         <button id="nav-types">أنواع الحركات</button>
@@ -42,85 +37,41 @@
     </nav>
     <div id="main-view" class="view">
         <main>
-            <section id="treasuries-section">
-                <h2>الخزائن</h2>
-                <form id="add-treasury-form"><input type="text" id="treasury-name" placeholder="اسم الخزينة" required><input type="number" id="treasury-balance" placeholder="الرصيد الافتتاحي" required step="0.01"><button type="submit">إضافة خزينة</button></form>
-                <div id="treasuries-list" class="list-container"></div>
-            </section>
-            <section id="parties-section">
-                <h2>العملاء والموردين والموظفين</h2>
-                <form id="add-party-form"><input type="text" id="party-name" placeholder="الاسم" required><select id="party-type" required><option value="customer">عميل</option><option value="supplier">مورد</option><option value="employee">موظف</option></select><button type="submit">إضافة جهة</button></form>
-                <div id="parties-list" class="list-container"></div>
-            </section>
-            <section id="transaction-section">
-                <h2>الحركات المالية</h2>
-                <form id="add-transaction-form"><select id="transaction-type" required><option value="income">إيراد</option><option value="expense">مصروف</option><option value="transfer">تحويل</option></select><select id="transaction-treasury" required><option value="">من خزينة...</option></select><div id="party-group"><select id="transaction-party"><option value="">اختر الجهة...</option></select></div><div id="custom-type-group" style="display: none;"><select id="transaction-custom-type"><option value="">اختر النوع...</option></select></div><div id="to-treasury-group" style="display: none;"><select id="transaction-to-treasury"><option value="">إلى خزينة...</option></select></div><input type="number" id="transaction-amount" placeholder="المبلغ" required step="0.01"><textarea id="transaction-description" placeholder="الوصف"></textarea><button type="submit">تسجيل الحركة</button></form>
-            </section>
+            <section><h2>الخزائن</h2><form id="add-treasury-form"><input type="text" id="treasury-name" placeholder="اسم الخزينة" required><input type="number" id="treasury-balance" placeholder="الرصيد الافتتاحي" required step="0.01"><button type="submit">إضافة خزينة</button></form><div id="treasuries-list" class="list-container"></div></section>
+            <section><h2>الجهات</h2><form id="add-party-form"><input type="text" id="party-name" placeholder="الاسم" required><select id="party-type" required><option value="customer">عميل</option><option value="supplier">مورد</option><option value="employee">موظف</option></select><button type="submit">إضافة جهة</button></form><div id="parties-list" class="list-container"></div></section>
+            <section><h2>الحركات المالية</h2><form id="add-transaction-form"><select id="transaction-type" required><option value="income">إيراد</option><option value="expense">مصروف</option><option value="transfer">تحويل</option></select><select id="transaction-treasury" required><option value="">من خزينة...</option></select><div id="party-group"><select id="transaction-party"><option value="">اختر الجهة...</option></select></div><div id="custom-type-group" style="display: none;"><select id="transaction-custom-type"><option value="">اختر النوع...</option></select></div><div id="to-treasury-group" style="display: none;"><select id="transaction-to-treasury"><option value="">إلى خزينة...</option></select></div><input type="number" id="transaction-amount" placeholder="المبلغ" required step="0.01"><textarea id="transaction-description" placeholder="الوصف"></textarea><button type="submit">تسجيل الحركة</button></form></section>
         </main>
-        <section id="transactions-list-section">
-            <h2>كشف الحركات</h2>
-            <section id="filter-section"><form id="filter-form"><input type="date" id="filter-start-date" title="من تاريخ"><input type="date" id="filter-end-date" title="إلى تاريخ"><select id="filter-type"><option value="">كل الأنواع</option><option value="income">إيراد</option><option value="expense">مصروف</option><option value="transfer">تحويل</option></select><select id="filter-treasury"><option value="">كل الخزائن</option></select><button type="button" id="filter-reset-btn">إعادة تعيين</button></form></section>
-            <div id="transactions-list" class="list-container"></div>
-        </section>
+        <section><h2>كشف الحركات</h2><section id="filter-section"><form id="filter-form"><input type="date" id="filter-start-date" title="من تاريخ"><input type="date" id="filter-end-date" title="إلى تاريخ"><select id="filter-type"><option value="">كل الأنواع</option><option value="income">إيراد</option><option value="expense">مصروف</option><option value="transfer">تحويل</option></select><select id="filter-treasury"><option value="">كل الخزائن</option></select><button type="button" id="filter-reset-btn">إعادة تعيين</button></form></section><div id="transactions-list" class="list-container"></div></section>
     </div>
     <div id="types-view" class="view" style="display: none;">
         <h1>إدارة أنواع الإيرادات والمصروفات</h1>
-        <section>
-            <h2>إضافة نوع حركة جديد</h2>
-            <form id="add-type-form"><input type="text" id="type-name" placeholder="اسم النوع (مثال: إيجار, راتب)" required><select id="type-category" required><option value="income">إيراد</option><option value="expense">مصروف</option></select><button type="submit">إضافة نوع</button></form>
-        </section>
-        <section class="types-display"><div id="income-types-list"><h3>أنواع الإيرادات</h3><div class="list-container"></div></div><div id="expense-types-list"><h3>أنواع المصروفات</h3><div class="list-container"></div></div></section>
+        <section><form id="add-type-form"><input type="text" id="type-name" placeholder="اسم النوع (مثال: إيجار, راتب)" required><select id="type-category" required><option value="income">إيراد</option><option value="expense">مصروف</option></select><button type="submit">إضافة نوع</button></form></section>
+        <div class="types-display"><section id="income-types-list"><h3>أنواع الإيرادات</h3><div class="list-container"></div></section><section id="expense-types-list"><h3>أنواع المصروفات</h3><div class="list-container"></div></section></div>
     </div>
     <div id="reports-view" class="view" style="display: none;">
         <h1>التقارير المالية</h1>
         <div class="report-cards"><div class="card"><h4>إجمالي الأرصدة</h4><p id="total-balance">0.00</p></div><div class="card"><h4>إجمالي الإيرادات</h4><p id="total-income">0.00</p></div><div class="card"><h4>إجمالي المصروفات</h4><p id="total-expenses">0.00</p></div><div class="card"><h4>صافي التدفق</h4><p id="net-flow">0.00</p></div></div>
-        <section><button id="download-pdf">تحميل تقرير PDF</button></section>
+        <section><button id="print-report-btn">طباعة تقرير الحركات</button></section>
     </div>
-
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- STATE MANAGEMENT ---
             let state = { treasuries: [], parties: [], transactions: [], transactionTypes: [], nextId: 1 };
-            const APP_STORAGE_KEY = 'simpleTreasuryApp';
+            const APP_STORAGE_KEY = 'simpleTreasuryAppV3';
             function saveState() { localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(state)); }
             function loadState() { const savedState = localStorage.getItem(APP_STORAGE_KEY); if (savedState) state = JSON.parse(savedState); }
-            function getNextId() { return state.nextId++; }
+            function getNextId() { const id = state.nextId; state.nextId++; return id; }
 
-            // --- DOM Elements (omitted for brevity, they are the same as before) ---
             const navs = { main: document.getElementById('nav-main'), reports: document.getElementById('nav-reports'), types: document.getElementById('nav-types') };
             const views = { main: document.getElementById('main-view'), reports: document.getElementById('reports-view'), types: document.getElementById('types-view') };
-            const addTreasuryForm = document.getElementById('add-treasury-form');
-            const treasuryNameInput = document.getElementById('treasury-name');
-            const treasuryBalanceInput = document.getElementById('treasury-balance');
-            const treasuriesList = document.getElementById('treasuries-list');
-            const addPartyForm = document.getElementById('add-party-form');
-            const partyNameInput = document.getElementById('party-name');
-            const partyTypeSelect = document.getElementById('party-type');
-            const partiesList = document.getElementById('parties-list');
-            const addTransactionForm = document.getElementById('add-transaction-form');
-            const transactionTypeSelect = document.getElementById('transaction-type');
-            const transactionTreasurySelect = document.getElementById('transaction-treasury');
-            const transactionPartySelect = document.getElementById('transaction-party');
-            const transactionToTreasurySelect = document.getElementById('transaction-to-treasury');
-            const transactionAmountInput = document.getElementById('transaction-amount');
-            const transactionDescriptionInput = document.getElementById('transaction-description');
-            const transactionCustomTypeSelect = document.getElementById('transaction-custom-type');
-            const partyGroup = document.getElementById('party-group');
-            const toTreasuryGroup = document.getElementById('to-treasury-group');
-            const customTypeGroup = document.getElementById('custom-type-group');
+            const addTreasuryForm = document.getElementById('add-treasury-form'), treasuryNameInput = document.getElementById('treasury-name'), treasuryBalanceInput = document.getElementById('treasury-balance'), treasuriesList = document.getElementById('treasuries-list');
+            const addPartyForm = document.getElementById('add-party-form'), partyNameInput = document.getElementById('party-name'), partyTypeSelect = document.getElementById('party-type'), partiesList = document.getElementById('parties-list');
+            const addTransactionForm = document.getElementById('add-transaction-form'), transactionTypeSelect = document.getElementById('transaction-type'), transactionTreasurySelect = document.getElementById('transaction-treasury'), transactionPartySelect = document.getElementById('transaction-party'), transactionToTreasurySelect = document.getElementById('transaction-to-treasury'), transactionAmountInput = document.getElementById('transaction-amount'), transactionDescriptionInput = document.getElementById('transaction-description'), transactionCustomTypeSelect = document.getElementById('transaction-custom-type');
+            const partyGroup = document.getElementById('party-group'), toTreasuryGroup = document.getElementById('to-treasury-group'), customTypeGroup = document.getElementById('custom-type-group');
             const transactionsList = document.getElementById('transactions-list');
-            const addTypeForm = document.getElementById('add-type-form');
-            const typeNameInput = document.getElementById('type-name');
-            const typeCategorySelect = document.getElementById('type-category');
-            const filterForm = document.getElementById('filter-form');
-            const filterStartDate = document.getElementById('filter-start-date');
-            const filterEndDate = document.getElementById('filter-end-date');
-            const filterType = document.getElementById('filter-type');
-            const filterTreasury = document.getElementById('filter-treasury');
-            const filterResetBtn = document.getElementById('filter-reset-btn');
-            const downloadPdfBtn = document.getElementById('download-pdf');
+            const addTypeForm = document.getElementById('add-type-form'), typeNameInput = document.getElementById('type-name'), typeCategorySelect = document.getElementById('type-category');
+            const filterForm = document.getElementById('filter-form'), filterStartDate = document.getElementById('filter-start-date'), filterEndDate = document.getElementById('filter-end-date'), filterType = document.getElementById('filter-type'), filterTreasury = document.getElementById('filter-treasury'), filterResetBtn = document.getElementById('filter-reset-btn');
+            const printReportBtn = document.getElementById('print-report-btn');
 
-            // --- RENDER FUNCTIONS ---
             function renderAll() { renderTreasuries(); renderParties(); applyFilters(); updateDropdowns(); }
             function renderTreasuries() { treasuriesList.innerHTML = ''; state.treasuries.forEach(t => { const item = document.createElement('div'); item.className = 'list-item'; item.innerHTML = `<span>${t.name}</span><span>${parseFloat(t.balance).toFixed(2)}</span>`; treasuriesList.appendChild(item); }); }
             function renderParties() { partiesList.innerHTML = ''; state.parties.forEach(p => { const item = document.createElement('div'); item.className = 'list-item'; let typeText = ''; if (p.type === 'customer') typeText = 'عميل'; else if (p.type === 'supplier') typeText = 'مورد'; else if (p.type === 'employee') typeText = 'موظف'; item.innerHTML = `<span>${p.name}</span><span>${typeText}</span>`; partiesList.appendChild(item); }); }
@@ -131,51 +82,44 @@
                 if (filters.endDate) filteredTransactions = filteredTransactions.filter(t => new Date(t.createdAt) <= new Date(filters.endDate).setHours(23, 59, 59, 999));
                 if (filters.type) filteredTransactions = filteredTransactions.filter(t => t.type === filters.type);
                 if (filters.treasuryId) { const id = parseInt(filters.treasuryId); filteredTransactions = filteredTransactions.filter(t => t.fromTreasuryId === id || t.toTreasuryId === id); }
-                [...filteredTransactions].reverse().forEach(t => { const item = document.createElement('div'); item.className = 'list-item'; let details = ''; const fromTreasury = state.treasuries.find(tr => tr.id === t.fromTreasuryId)?.name || 'N/A'; const customType = state.transactionTypes.find(ct => ct.id === t.customTypeId)?.name || ''; const typeName = customType ? ` (${customType})` : ''; if (t.type === 'income' || t.type === 'expense') { const party = state.parties.find(p => p.id === t.partyId)?.name || 'N/A'; details = t.type === 'income' ? `إيراد${typeName} من ${party} إلى ${fromTreasury}` : `مصروف${typeName} إلى ${party} من ${fromTreasury}`; } else if (t.type === 'transfer') { const toTreasury = state.treasuries.find(tr => tr.id === t.toTreasuryId)?.name || 'N/A'; details = `تحويل من ${fromTreasury} إلى ${toTreasury}`; } item.innerHTML = `<div><span>${details}</span><br><span style="font-size:0.8em; color: #555;">${t.description || ''}</span></div><div><span>${parseFloat(t.amount).toFixed(2)}</span><button class="btn-print" data-id="${t.id}">طباعة</button></div>`; transactionsList.appendChild(item); });
+                [...filteredTransactions].reverse().forEach(t => { const item = document.createElement('div'); item.className = 'list-item'; let details = ''; const fromTreasury = state.treasuries.find(tr => tr.id === t.fromTreasuryId)?.name || 'N/A'; const customType = state.transactionTypes.find(ct => ct.id === t.customTypeId)?.name || ''; const typeName = customType ? ` (${customType})` : ''; if (t.type === 'income' || t.type === 'expense') { const party = state.parties.find(p => p.id === t.partyId)?.name || 'N/A'; details = t.type === 'income' ? `إيراد${typeName} من ${party}` : `مصروف${typeName} إلى ${party}`; } else if (t.type === 'transfer') { const toTreasury = state.treasuries.find(tr => tr.id === t.toTreasuryId)?.name || 'N/A'; details = `تحويل من ${fromTreasury} إلى ${toTreasury}`; } item.innerHTML = `<div style="flex-grow:1;"><span>${details}</span><br><span style="font-size:0.8em; color: #606770;">${t.description || ''}</span></div><div style="text-align:left;"><span>${parseFloat(t.amount).toFixed(2)}</span><br><button class="btn-print" data-id="${t.id}">طباعة الإيصال</button></div>`; transactionsList.appendChild(item); });
             }
             function renderTypes() { const incomeList = document.querySelector('#income-types-list .list-container'); const expenseList = document.querySelector('#expense-types-list .list-container'); incomeList.innerHTML = ''; expenseList.innerHTML = ''; state.transactionTypes.forEach(t => { const item = document.createElement('div'); item.className = 'list-item'; item.textContent = t.name; if (t.category === 'income') incomeList.appendChild(item); else expenseList.appendChild(item); }); }
             function updateDropdowns() { const selects = { treasury: transactionTreasurySelect, toTreasury: transactionToTreasurySelect, party: transactionPartySelect, filterTreasury: filterTreasury }; selects.treasury.innerHTML = '<option value="">من خزينة...</option>'; selects.toTreasury.innerHTML = '<option value="">إلى خزينة...</option>'; selects.party.innerHTML = '<option value="">اختر الجهة...</option>'; selects.filterTreasury.innerHTML = '<option value="">كل الخزائن</option>'; state.treasuries.forEach(t => { const opt = new Option(t.name, t.id); selects.treasury.appendChild(opt); selects.toTreasury.appendChild(opt.cloneNode(true)); selects.filterTreasury.appendChild(opt.cloneNode(true)); }); state.parties.forEach(p => selects.party.appendChild(new Option(p.name, p.id))); }
             function updateCustomTypeDropdown(type) { transactionCustomTypeSelect.innerHTML = '<option value="">اختر النوع...</option>'; state.transactionTypes.filter(t => t.category === type).forEach(t => transactionCustomTypeSelect.appendChild(new Option(t.name, t.id))); }
-
-            // --- EVENT HANDLERS ---
             function switchView(viewName) { Object.keys(views).forEach(key => { views[key].style.display = 'none'; navs[key].classList.remove('active'); }); views[viewName].style.display = 'block'; navs[viewName].classList.add('active'); }
             function applyFilters() { const filters = { startDate: filterStartDate.value, endDate: filterEndDate.value, type: filterType.value, treasuryId: filterTreasury.value }; renderTransactions(filters); }
+
             navs.main.addEventListener('click', () => switchView('main'));
             navs.types.addEventListener('click', () => { switchView('types'); renderTypes(); });
             navs.reports.addEventListener('click', () => { switchView('reports'); const totalBalance = state.treasuries.reduce((sum, t) => sum + parseFloat(t.balance), 0); const totalIncome = state.transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + parseFloat(t.amount), 0); const totalExpenses = state.transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + parseFloat(t.amount), 0); document.getElementById('total-balance').textContent = totalBalance.toFixed(2); document.getElementById('total-income').textContent = totalIncome.toFixed(2); document.getElementById('total-expenses').textContent = totalExpenses.toFixed(2); document.getElementById('net-flow').textContent = (totalIncome - totalExpenses).toFixed(2); });
+
             addTreasuryForm.addEventListener('submit', (e) => { e.preventDefault(); state.treasuries.push({ id: getNextId(), name: treasuryNameInput.value, balance: parseFloat(treasuryBalanceInput.value) || 0 }); addTreasuryForm.reset(); saveState(); renderAll(); });
             addPartyForm.addEventListener('submit', (e) => { e.preventDefault(); state.parties.push({ id: getNextId(), name: partyNameInput.value, type: partyTypeSelect.value }); addPartyForm.reset(); saveState(); renderAll(); });
             addTypeForm.addEventListener('submit', (e) => { e.preventDefault(); state.transactionTypes.push({ id: getNextId(), name: typeNameInput.value, category: typeCategorySelect.value }); addTypeForm.reset(); saveState(); renderTypes(); });
             transactionTypeSelect.addEventListener('change', () => { const type = transactionTypeSelect.value; partyGroup.style.display = type === 'transfer' ? 'none' : 'block'; customTypeGroup.style.display = type === 'transfer' ? 'none' : 'block'; toTreasuryGroup.style.display = type === 'transfer' ? 'block' : 'none'; if (type !== 'transfer') updateCustomTypeDropdown(type); });
-            addTransactionForm.addEventListener('submit', (e) => { e.preventDefault(); const type = transactionTypeSelect.value; const amount = parseFloat(transactionAmountInput.value); const fromTreasuryId = parseInt(transactionTreasurySelect.value); const toTreasuryId = parseInt(transactionToTreasurySelect.value); const partyId = parseInt(transactionPartySelect.value); const customTypeId = parseInt(transactionCustomTypeSelect.value); const fromTreasury = state.treasuries.find(t => t.id === fromTreasuryId); if (!fromTreasury || isNaN(amount) || amount <= 0) { alert('بيانات غير صحيحة.'); return; } if ((type === 'expense' || type === 'transfer') && fromTreasury.balance < amount) { alert('الرصيد غير كافٍ.'); return; } if (type === 'transfer') { if (isNaN(toTreasuryId) || fromTreasuryId === toTreasuryId) { alert('يرجى اختيار خزينة مختلفة للتحويل إليها.'); return; } const toTreasury = state.treasuries.find(t => t.id === toTreasuryId); if (!toTreasury) { alert('الخزينة المحول إليها غير موجودة.'); return; } fromTreasury.balance -= amount; toTreasury.balance += amount; } else { if (isNaN(partyId)) { alert('يرجى اختيار جهة.'); return; } if ((type === 'income') fromTreasury.balance += amount; else if (type === 'expense') fromTreasury.balance -= amount; } state.transactions.push({ id: getNextId(), type, amount, fromTreasuryId, toTreasuryId: type === 'transfer' ? toTreasuryId : null, partyId: type !== 'transfer' ? partyId : null, customTypeId: type !== 'transfer' ? customTypeId : null, description: transactionDescriptionInput.value }); addTransactionForm.reset(); saveState(); renderAll(); transactionTypeSelect.dispatchEvent(new Event('change')); });
+            addTransactionForm.addEventListener('submit', (e) => { e.preventDefault(); const type = transactionTypeSelect.value; const amount = parseFloat(transactionAmountInput.value); const fromTreasuryId = parseInt(transactionTreasurySelect.value); const toTreasuryId = parseInt(transactionToTreasurySelect.value); const partyId = parseInt(transactionPartySelect.value); const customTypeId = parseInt(transactionCustomTypeSelect.value); const fromTreasury = state.treasuries.find(t => t.id === fromTreasuryId); if (!fromTreasury || isNaN(amount) || amount <= 0) { alert('بيانات غير صحيحة.'); return; } if ((type === 'expense' || type === 'transfer') && fromTreasury.balance < amount) { alert('الرصيد غير كافٍ.'); return; } if (type === 'transfer') { if (isNaN(toTreasuryId) || fromTreasuryId === toTreasuryId) { alert('يرجى اختيار خزينة مختلفة للتحويل إليها.'); return; } const toTreasury = state.treasuries.find(t => t.id === toTreasuryId); if (!toTreasury) { alert('الخزينة المحول إليها غير موجودة.'); return; } fromTreasury.balance -= amount; toTreasury.balance += amount; } else { if (isNaN(partyId)) { alert('يرجى اختيار جهة.'); return; } if (type === 'income') fromTreasury.balance += amount; else if (type === 'expense') fromTreasury.balance -= amount; } state.transactions.push({ id: getNextId(), type, amount, fromTreasuryId, toTreasuryId: type === 'transfer' ? toTreasuryId : null, partyId: type !== 'transfer' ? partyId : null, customTypeId: type !== 'transfer' ? customTypeId : null, description: transactionDescriptionInput.value, createdAt: new Date().toISOString() }); addTransactionForm.reset(); saveState(); renderAll(); transactionTypeSelect.dispatchEvent(new Event('change')); });
             filterForm.addEventListener('input', applyFilters);
             filterResetBtn.addEventListener('click', () => { filterForm.reset(); applyFilters(); });
-            transactionsList.addEventListener('click', (e) => { if (e.target.classList.contains('btn-print')) { const id = parseInt(e.target.dataset.id); const transaction = state.transactions.find(t => t.id === id); if (!transaction) return; const receiptWindow = window.open('', '_blank'); receiptWindow.document.write(`<html><head><title>إيصال</title><style>body{direction:rtl;font-family:sans-serif;}table{width:100%;border-collapse:collapse;}td{padding:8px;border:1px solid #ccc;}</style></head><body><h1>إيصال ${transaction.type === 'income' ? 'قبض' : 'دفع'}</h1><table><tr><td>رقم الحركة:</td><td>${transaction.id}</td></tr><tr><td>التاريخ:</td><td>${new Date(transaction.createdAt).toLocaleString('ar-EG')}</td></tr><tr><td>المبلغ:</td><td>${transaction.amount.toFixed(2)}</td></tr><tr><td>الوصف:</td><td>${transaction.description || ''}</td></tr></table><script>window.print();window.close();</script></body></html>`); receiptWindow.document.close(); } });
-            downloadPdfBtn.addEventListener('click', () => {
-                if (window.jspdf) {
-                    const { jsPDF } = window.jspdf;
-                    const doc = new jsPDF();
-                    // NOTE: jsPDF has poor Arabic support without custom fonts, which is complex to set up here.
-                    // The PDF will be functional but Arabic text may not render correctly.
-                    doc.text("Financial Transaction Report", 105, 10, { align: 'center' });
-                    const head = [['ID', 'Date', 'Details', 'Amount']];
-                    const body = state.transactions.map(t => {
-                        let details = '';
-                        const fromTreasury = state.treasuries.find(tr => tr.id === t.fromTreasuryId)?.name || 'N/A';
-                        const customType = state.transactionTypes.find(ct => ct.id === t.customTypeId)?.name || '';
-                        const typeName = customType ? ` (${customType})` : '';
-                        if (t.type === 'income' || t.type === 'expense') { const party = state.parties.find(p => p.id === t.partyId)?.name || 'N/A'; details = t.type === 'income' ? `Income${typeName} from ${party}` : `Expense${typeName} to ${party}`; }
-                        else { const toTreasury = state.treasuries.find(tr => tr.id === t.toTreasuryId)?.name || 'N/A'; details = `Transfer from ${fromTreasury} to ${toTreasury}`; }
-                        return [t.id, new Date(t.createdAt).toLocaleDateString(), details, t.amount.toFixed(2)];
-                    });
-                    doc.autoTable({ head, body });
-                    doc.save('financial-report.pdf');
-                } else {
-                    alert('عذراً، حدث خطأ أثناء تحميل مكتبة إنشاء PDF. يرجى التأكد من اتصالك بالإنترنت.');
-                }
+            transactionsList.addEventListener('click', (e) => { if (e.target.classList.contains('btn-print')) { const id = parseInt(e.target.dataset.id); const transaction = state.transactions.find(t => t.id === id); if (!transaction) return; const receiptWindow = window.open('', '_blank'); receiptWindow.document.write(`<html><head><title>إيصال</title><style>body{direction:rtl;font-family:sans-serif;}h1{text-align:center;}table{width:100%;border-collapse:collapse;}td,th{padding:8px;border:1px solid #ccc;text-align:right;}</style></head><body><h1>إيصال ${transaction.type === 'income' ? 'قبض' : 'دفع'}</h1><table><tr><th>رقم الحركة</th><td>${transaction.id}</td></tr><tr><th>التاريخ</th><td>${new Date(transaction.createdAt).toLocaleString('ar-EG')}</td></tr><tr><th>المبلغ</th><td>${transaction.amount.toFixed(2)}</td></tr><tr><th>الوصف</th><td>${transaction.description || ''}</td></tr></table><script>setTimeout(() => { window.print(); window.close(); }, 200);</script></body></html>`); receiptWindow.document.close(); } });
+            printReportBtn.addEventListener('click', () => {
+                const reportWindow = window.open('', '_blank');
+                const transactionsHtml = state.transactions.map(t => {
+                    let details = '';
+                    const fromTreasury = state.treasuries.find(tr => tr.id === t.fromTreasuryId)?.name || 'N/A';
+                    if (t.type === 'income' || t.type === 'expense') { const party = state.parties.find(p => p.id === t.partyId)?.name || 'N/A'; details = `<b>${t.type === 'income' ? 'إيراد' : 'مصروف'}</b> من/إلى ${party}`; }
+                    else { const toTreasury = state.treasuries.find(tr => tr.id === t.toTreasuryId)?.name || 'N/A'; details = `<b>تحويل</b> من ${fromTreasury} إلى ${toTreasury}`; }
+                    return `<tr><td>${t.id}</td><td>${new Date(t.createdAt).toLocaleDateString('ar-EG')}</td><td>${details}</td><td>${t.description || ''}</td><td>${t.amount.toFixed(2)}</td></tr>`;
+                }).join('');
+
+                reportWindow.document.write(`
+                    <html><head><title>تقرير مالي</title><style>body{direction:rtl;font-family:sans-serif;}h1{text-align:center;}table{width:100%;border-collapse:collapse;}td,th{padding:8px;border:1px solid #ccc;text-align:right;}thead{background-color:#f0f2f5;}</style></head>
+                    <body><h1>تقرير الحركات المالية</h1>
+                    <table><thead><tr><th>#</th><th>التاريخ</th><th>البيان</th><th>الوصف</th><th>المبلغ</th></tr></thead><tbody>${transactionsHtml}</tbody></table>
+                    <script>setTimeout(() => { window.print(); window.close(); }, 200);</script></body></html>`);
+                reportWindow.document.close();
             });
 
-            // --- INITIALIZATION ---
             function init() { loadState(); renderAll(); switchView('main'); }
             init();
         });
