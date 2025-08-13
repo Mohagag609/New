@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>الرئيسية - نظام الخزينة</title>
+    <title>إدارة الخزائن - نظام الخزينة</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -15,8 +15,8 @@
                 <h3>نظام الخزينة</h3>
             </div>
             <ul class="list-unstyled components">
-                <li class="active"><a href="index.html">الرئيسية</a></li>
-                <li><a href="treasuries.html">إدارة الخزائن</a></li>
+                <li><a href="index.html">الرئيسية</a></li>
+                <li class="active"><a href="treasuries.html">إدارة الخزائن</a></li>
                 <li><a href="parties.html">العملاء والموردين</a></li>
                 <li><a href="transactions.html">الحركات المالية</a></li>
                 <li><a href="reports.html">التقارير</a></li>
@@ -30,14 +30,21 @@
             </button>
 
             <header>
-                <h1>لوحة التحكم الرئيسية</h1>
+                <h1>إدارة الخزائن</h1>
             </header>
 
             <main>
-                <section>
-                    <h2>مرحباً بك في نظام إدارة الخزينة</h2>
-                    <p>استخدم القائمة الجانبية للتنقل بين الأقسام المختلفة للنظام.</p>
-                    <!-- I can add summary cards here later -->
+                <!-- Section for Managing Treasuries -->
+                <section id="treasuries-section">
+                    <h2>إضافة / عرض الخزائن</h2>
+                    <form id="add-treasury-form">
+                        <input type="text" id="treasury-name" placeholder="اسم الخzينة الجديدة" required>
+                        <input type="number" id="treasury-balance" placeholder="الرصيد الافتتاحي" required>
+                        <button type="submit">إضافة خزينة</button>
+                    </form>
+                    <div id="treasuries-list">
+                        <!-- Treasury details will be rendered here by JS -->
+                    </div>
                 </section>
             </main>
         </div>
@@ -46,7 +53,6 @@
     <!-- JavaScript files -->
     <script src="storage.js" defer></script>
     <script src="components.js" defer></script>
-    <!-- A new navigation script will be needed -->
     <script src="navigation.js" defer></script>
     <script src="app.js" defer></script>
 </body>

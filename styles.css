@@ -4,11 +4,85 @@ body {
     background-color: #f4f7f9;
     color: #333;
     margin: 0;
-    padding: 20px;
+    padding: 0; /* Remove padding for sidebar layout */
     direction: rtl;
 }
 
-/* Header */
+/* Wrapper for Sidebar Layout */
+.wrapper {
+    display: flex;
+    align-items: stretch;
+}
+
+/* ---------------------------------------------------
+    SIDEBAR STYLE
+----------------------------------------------------- */
+#sidebar {
+    min-width: 250px;
+    max-width: 250px;
+    background: #34495e;
+    color: #fff;
+    transition: all 0.3s;
+}
+
+#sidebar.active {
+    margin-right: -250px; /* Slide out to the right for RTL */
+}
+
+#sidebar .sidebar-header {
+    padding: 20px;
+    background: #2c3e50;
+    text-align: center;
+    font-size: 1.5em;
+    font-weight: bold;
+}
+
+#sidebar ul.components {
+    padding: 20px 0;
+    list-style: none; /* Remove bullet points */
+}
+
+#sidebar ul li a {
+    padding: 15px 20px;
+    font-size: 1.1em;
+    display: block;
+    color: #fff;
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+#sidebar ul li a:hover {
+    color: #34495e;
+    background: #fff;
+}
+
+#sidebar ul li.active > a {
+    color: #fff;
+    background: #2980b9;
+}
+
+/* ---------------------------------------------------
+    CONTENT STYLE
+----------------------------------------------------- */
+#content {
+    width: 100%;
+    padding: 20px;
+    min-height: 100vh;
+    transition: all 0.3s;
+}
+
+/* Toggle Button */
+#sidebarCollapse {
+    background: #3498db;
+    border: none;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-bottom: 20px;
+}
+
+/* Page Header */
 header {
     background-color: #fff;
     padding: 20px;
@@ -23,7 +97,7 @@ header h1 {
     color: #2c3e50;
 }
 
-/* Main Layout */
+/* Main Content Layout (can be reused in pages) */
 main {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -145,7 +219,74 @@ button:hover {
     color: #555;
 }
 
+.transaction-actions {
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.btn-print {
+    padding: 5px 10px;
+    font-size: 0.9rem;
+    background-color: #95a5a6;
+}
+
+.btn-print:hover {
+    background-color: #7f8c8d;
+}
+
 /* Utility Classes */
 .hidden {
     display: none;
 }
+
+/* Filter Form Styles */
+#filter-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    align-items: end;
+}
+
+#filter-form .form-group {
+    margin-bottom: 0;
+}
+
+#filter-reset-btn {
+    background-color: #e74c3c;
+}
+#filter-reset-btn:hover {
+    background-color: #c0392b;
+}
+
+/* Report Card Styles */
+.report-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.card {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.card h4 {
+    margin-top: 0;
+    color: #34495e;
+}
+
+.card p {
+    font-size: 2em;
+    font-weight: bold;
+    margin-bottom: 0;
+    color: #2c3e50;
+}
+
+#total-income ~ p { color: #27ae60 !important; }
+#total-expenses ~ p { color: #e74c3c !important; }

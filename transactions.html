@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الحركات المالية - نظام الخزينة</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="wrapper">
+        <!-- Sidebar -->
+        <nav id="sidebar">
+            <div class="sidebar-header">
+                <h3>نظام الخزينة</h3>
+            </div>
+            <ul class="list-unstyled components">
+                <li><a href="index.html">الرئيسية</a></li>
+                <li><a href="treasuries.html">إدارة الخزائن</a></li>
+                <li><a href="parties.html">العملاء والموردين</a></li>
+                <li class="active"><a href="transactions.html">الحركات المالية</a></li>
+                <li><a href="reports.html">التقارير</a></li>
+            </ul>
+        </nav>
+
+        <!-- Page Content -->
+        <div id="content">
+            <button type="button" id="sidebarCollapse">
+                <span>☰ القائمة</span>
+            </button>
+
+            <header>
+                <h1>الحركات المالية</h1>
+            </header>
+
+            <main>
+                <!-- Section for Adding Transactions -->
+                <section id="transaction-section">
+                    <h2>إضافة حركة مالية</h2>
+                    <form id="add-transaction-form">
+                        <select id="transaction-type" required>
+                            <option value="income">إيراد</option>
+                            <option value="expense">مصروف</option>
+                            <option value="transfer">تحويل</option>
+                        </select>
+
+                        <div class="form-group">
+                            <label for="transaction-treasury">من خزينة:</label>
+                            <select id="transaction-treasury" required></select>
+                        </div>
+
+                        <div class="form-group" id="party-group">
+                            <label for="transaction-party">الجهة (عميل/مورد):</label>
+                            <select id="transaction-party"></select>
+                        </div>
+
+                        <div class="form-group" id="to-treasury-group" style="display: none;">
+                            <label for="transaction-to-treasury">إلى خزينة:</label>
+                            <select id="transaction-to-treasury"></select>
+                        </div>
+
+                        <input type="number" id="transaction-amount" placeholder="المبلغ" required min="0.01" step="0.01">
+                        <textarea id="transaction-description" placeholder="الوصف (اختياري)"></textarea>
+                        <button type="submit">تسجيل الحركة</button>
+                    </form>
+                </section>
+
+                <!-- Section for Filtering Transactions -->
+                <section id="filter-section">
+                    <h2>فلترة الحركات</h2>
+                    <form id="filter-form">
+                        <div class="form-group">
+                            <label for="filter-start-date">من تاريخ:</label>
+                            <input type="date" id="filter-start-date">
+                        </div>
+                        <div class="form-group">
+                            <label for="filter-end-date">إلى تاريخ:</label>
+                            <input type="date" id="filter-end-date">
+                        </div>
+                        <div class="form-group">
+                            <label for="filter-type">نوع الحركة:</label>
+                            <select id="filter-type">
+                                <option value="">الكل</option>
+                                <option value="income">إيراد</option>
+                                <option value="expense">مصروف</option>
+                                <option value="transfer">تحويل</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="filter-treasury">الخزينة:</label>
+                            <select id="filter-treasury">
+                                <!-- Options will be populated by JS -->
+                            </select>
+                        </div>
+                         <button type="button" id="filter-reset-btn">إعادة تعيين الفلاتر</button>
+                    </form>
+                </section>
+
+                <!-- Section for Displaying Reports/Transactions -->
+                <section id="report-section">
+                    <h2>كشف الحركات</h2>
+                    <div id="transactions-list">
+                        <!-- Transactions log will be rendered here by JS -->
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- JavaScript files -->
+    <script src="storage.js" defer></script>
+    <script src="components.js" defer></script>
+    <script src="navigation.js" defer></script>
+    <script src="app.js" defer></script>
+</body>
+</html>

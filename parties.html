@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>الرئيسية - نظام الخزينة</title>
+    <title>العملاء والموردين - نظام الخزينة</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -15,9 +15,9 @@
                 <h3>نظام الخزينة</h3>
             </div>
             <ul class="list-unstyled components">
-                <li class="active"><a href="index.html">الرئيسية</a></li>
+                <li><a href="index.html">الرئيسية</a></li>
                 <li><a href="treasuries.html">إدارة الخزائن</a></li>
-                <li><a href="parties.html">العملاء والموردين</a></li>
+                <li class="active"><a href="parties.html">العملاء والموردين</a></li>
                 <li><a href="transactions.html">الحركات المالية</a></li>
                 <li><a href="reports.html">التقارير</a></li>
             </ul>
@@ -30,14 +30,24 @@
             </button>
 
             <header>
-                <h1>لوحة التحكم الرئيسية</h1>
+                <h1>إدارة العملاء والموردين</h1>
             </header>
 
             <main>
-                <section>
-                    <h2>مرحباً بك في نظام إدارة الخزينة</h2>
-                    <p>استخدم القائمة الجانبية للتنقل بين الأقسام المختلفة للنظام.</p>
-                    <!-- I can add summary cards here later -->
+                <!-- Section for Managing Parties -->
+                <section id="parties-section">
+                    <h2>إضافة / عرض الجهات</h2>
+                    <form id="add-party-form">
+                        <input type="text" id="party-name" placeholder="اسم العميل/المورد" required>
+                        <select id="party-type" required>
+                            <option value="customer">عميل</option>
+                            <option value="supplier">مورد</option>
+                        </select>
+                        <button type="submit">إضافة جهة</button>
+                    </form>
+                    <div id="parties-list">
+                        <!-- Parties list will be rendered here by JS -->
+                    </div>
                 </section>
             </main>
         </div>
@@ -46,7 +56,6 @@
     <!-- JavaScript files -->
     <script src="storage.js" defer></script>
     <script src="components.js" defer></script>
-    <!-- A new navigation script will be needed -->
     <script src="navigation.js" defer></script>
     <script src="app.js" defer></script>
 </body>

@@ -61,6 +61,7 @@ function createPartyComponent(party) {
  */
 function createTransactionComponent(transaction, data) {
     const {
+        id, // get id for the button
         type,
         amount,
         treasuryId,
@@ -87,11 +88,11 @@ function createTransactionComponent(transaction, data) {
 
     switch (type) {
         case 'income':
-            typeDisplay = 'إيراد';
+            typeDisplay = 'إيصال قبض';
             details = `من: ${party ? party.name : 'جهة محذوفة'} | إلى خزينة: ${fromTreasury ? fromTreasury.name : 'خزينة محذوفة'}`;
             break;
         case 'expense':
-            typeDisplay = 'مصروف';
+            typeDisplay = 'إيصال دفع';
             details = `إلى: ${party ? party.name : 'جهة محذوفة'} | من خزينة: ${fromTreasury ? fromTreasury.name : 'خزينة محذوفة'}`;
             break;
         case 'transfer':
@@ -100,14 +101,20 @@ function createTransactionComponent(transaction, data) {
             break;
     }
 
+    // Also change typeDisplay for the title
+    const title = type === 'transfer' ? 'تحويل' : typeDisplay;
+
     return `
-        <div class="list-item transaction-item ${type}" data-id="${transaction.id}">
+        <div class="list-item transaction-item ${type}" data-id="${id}">
             <div>
-                <p><strong>${typeDisplay}:</strong> <span class="amount">${formattedAmount}</span></p>
+                <p><strong>${title}:</strong> <span class="amount">${formattedAmount}</span></p>
                 <p class="transaction-details">${details}</p>
                 ${description ? `<p class="transaction-details"><em>الوصف: ${description}</em></p>` : ''}
             </div>
-            <p class="transaction-details">${date}</p>
+            <div class="transaction-actions">
+                <p class="transaction-details">${date}</p>
+                <button class="btn-print" data-transaction-id="${id}">طباعة</button>
+            </div>
         </div>
     `;
 }
