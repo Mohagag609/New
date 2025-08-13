@@ -290,3 +290,28 @@ button:hover {
 
 #total-income ~ p { color: #27ae60 !important; }
 #total-expenses ~ p { color: #e74c3c !important; }
+
+/* Types Page Styles */
+.types-display {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-top: 30px;
+}
+
+.types-display h3 {
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+}
+
+.types-display ul {
+    list-style: none;
+    padding: 0;
+}
+
+.types-display li {
+    background-color: #f9f9f9;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}

@@ -17,6 +17,7 @@ class Storage {
                 treasuries: [],
                 parties: [],
                 transactions: [],
+                transactionTypes: [], // For user-defined income/expense types
                 nextId: 1, // Simple ID generator
             };
             this.saveState(initialState);

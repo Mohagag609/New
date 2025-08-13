@@ -87,6 +87,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const transactionToTreasurySelect = document.getElementById('transaction-to-treasury');
         const transactionAmountInput = document.getElementById('transaction-amount');
         const transactionDescriptionInput = document.getElementById('transaction-description');
+        const customTypeGroup = document.getElementById('custom-type-group');
+        const transactionCustomTypeSelect = document.getElementById('transaction-custom-type');
 
         // Elements for the Filter form
         const filterForm = document.getElementById('filter-form');
@@ -151,12 +153,24 @@ document.addEventListener('DOMContentLoaded', () => {
             if (transactionPartySelect) transactionPartySelect.innerHTML = '<option value="">اختر الجهة...</option>';
 
             treasuries.forEach(t => {
-                if (transactionTreasurySelect) transactionTreasurySelect.appendChild(createOptionElement(t));
-                if (transactionToTreasurySelect) transactionToTreasurySelect.appendChild(createOptionElement(t));
+                const option1 = createOptionElement(t);
+                const option2 = option1.cloneNode(true);
+                if (transactionTreasurySelect) transactionTreasurySelect.appendChild(option1);
+                if (transactionToTreasurySelect) transactionToTreasurySelect.appendChild(option2);
             });
             parties.forEach(p => {
                 if (transactionPartySelect) transactionPartySelect.appendChild(createOptionElement(p));
             });
+        }
+
+        function updateCustomTypeDropdown(transactionType) {
+            const customTypes = storage.getAll('transactionTypes').filter(t => t.category === transactionType);
+            if (transactionCustomTypeSelect) {
+                transactionCustomTypeSelect.innerHTML = '<option value="">اختر نوع محدد...</option>';
+                customTypes.forEach(t => {
+                    transactionCustomTypeSelect.appendChild(createOptionElement(t));
+                });
+            }
         }
 
         function handleTransactionTypeChange() {
@@ -164,10 +178,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const type = transactionTypeSelect.value;
             if (type === 'transfer') {
                 partyGroup.style.display = 'none';
+                customTypeGroup.style.display = 'none';
                 toTreasuryGroup.style.display = 'block';
             } else {
                 partyGroup.style.display = 'block';
+                customTypeGroup.style.display = 'block';
                 toTreasuryGroup.style.display = 'none';
+                updateCustomTypeDropdown(type);
             }
         }
 
@@ -179,6 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const fromTreasuryId = parseInt(transactionTreasurySelect.value, 10);
                 const toTreasuryId = parseInt(transactionToTreasurySelect.value, 10);
                 const partyId = parseInt(transactionPartySelect.value, 10);
+                const customTypeId = parseInt(transactionCustomTypeSelect.value, 10);
                 const description = transactionDescriptionInput.value.trim();
 
                 if (isNaN(amount) || amount <= 0 || isNaN(fromTreasuryId)) {
@@ -216,9 +234,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
                 storage.updateItem('treasuries', fromTreasuryId, { balance: newFromBalance });
-                storage.addItem('transactions', { type, amount, treasuryId: fromTreasuryId, partyId: type !== 'transfer' ? partyId : null, toTreasuryId: type === 'transfer' ? toTreasuryId : null, description });
 
-                applyFilters(); // Re-render with current filters
+                storage.addItem('transactions', { type, amount, treasuryId: fromTreasuryId, partyId: type !== 'transfer' ? partyId : null, toTreasuryId: type === 'transfer' ? toTreasuryId : null, customTypeId: type !== 'transfer' ? customTypeId : null, description });
+
+                applyFilters();
                 updateAddTransactionDropdowns();
                 addTransactionForm.reset();
                 handleTransactionTypeChange();
@@ -289,9 +308,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Initial render for the page
         populateFilterDropdowns();
-        applyFilters(); // Initial render with (empty) filters
+        applyFilters();
         updateAddTransactionDropdowns();
         handleTransactionTypeChange();
+    }
+
+
+    function initTypesPage() {
+        const addTypeForm = document.getElementById('add-type-form');
+        const typeNameInput = document.getElementById('type-name');
+        const typeCategorySelect = document.getElementById('type-category');
+        const incomeTypesList = document.getElementById('income-types-list');
+        const expenseTypesList = document.getElementById('expense-types-list');
+
+        function renderTypes() {
+            const types = storage.getAll('transactionTypes');
+            const incomeTypes = types.filter(t => t.category === 'income');
+            const expenseTypes = types.filter(t => t.category === 'expense');
+
+            if (incomeTypesList) {
+                incomeTypesList.innerHTML = '<h3>أنواع الإيرادات</h3><ul>' + incomeTypes.map(t => `<li>${t.name}</li>`).join('') + '</ul>';
+            }
+            if (expenseTypesList) {
+                expenseTypesList.innerHTML = '<h3>أنواع المصروفات</h3><ul>' + expenseTypes.map(t => `<li>${t.name}</li>`).join('') + '</ul>';
+            }
+        }
+
+        if (addTypeForm) {
+            addTypeForm.addEventListener('submit', (event) => {
+                event.preventDefault();
+                const name = typeNameInput.value.trim();
+                const category = typeCategorySelect.value;
+                if (name) {
+                    storage.addItem('transactionTypes', { name, category });
+                    renderTypes();
+                    addTypeForm.reset();
+                }
+            });
+        }
+
+        renderTypes();
     }
 
 
@@ -343,6 +399,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (document.getElementById('report-summary')) { // Check for the report page
             initReportsPage();
+        }
+        if (document.getElementById('types-section')) {
+            initTypesPage();
         }
     }
 

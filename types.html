@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>التقارير المالية - نظام الخزينة</title>
+    <title>أنواع الحركات - نظام الخزينة</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -18,8 +18,8 @@
                 <li><a href="treasuries.html">إدارة الخزائن</a></li>
                 <li><a href="parties.html">العملاء والموردين</a></li>
                 <li><a href="transactions.html">الحركات المالية</a></li>
-                <li class="active"><a href="reports.html">التقارير</a></li>
-                <li><a href="types.html">أنواع الحركات</a></li>
+                <li><a href="reports.html">التقارير</a></li>
+                <li class="active"><a href="types.html">أنواع الحركات</a></li>
             </ul>
         </nav>
 
@@ -30,28 +30,29 @@
             </button>
 
             <header>
-                <h1>التقارير المالية</h1>
+                <h1>إدارة أنواع الإيرادات والمصروفات</h1>
             </header>
 
             <main>
-                <section id="report-summary">
-                    <h2>ملخص مالي عام</h2>
-                    <div class="report-cards">
-                        <div class="card">
-                            <h4>إجمالي الأرصدة</h4>
-                            <p id="total-balance">0.00</p>
+                <section id="types-section">
+                    <h2>إضافة نوع حركة جديد</h2>
+                    <form id="add-type-form">
+                        <input type="text" id="type-name" placeholder="اسم النوع (مثال: إيجار, راتب)" required>
+                        <select id="type-category" required>
+                            <option value="income">إيراد</option>
+                            <option value="expense">مصروف</option>
+                        </select>
+                        <button type="submit">إضافة نوع</button>
+                    </form>
+
+                    <div class="types-display">
+                        <div id="income-types-list">
+                            <h3>أنواع الإيرادات</h3>
+                            <!-- Income types will be rendered here -->
                         </div>
-                        <div class="card">
-                            <h4>إجمالي الإيرادات</h4>
-                            <p id="total-income">0.00</p>
-                        </div>
-                        <div class="card">
-                            <h4>إجمالي المصروفات</h4>
-                            <p id="total-expenses">0.00</p>
-                        </div>
-                        <div class="card">
-                            <h4>صافي التدفق النقدي</h4>
-                            <p id="net-flow">0.00</p>
+                        <div id="expense-types-list">
+                            <h3>أنواع المصروفات</h3>
+                            <!-- Expense types will be rendered here -->
                         </div>
                     </div>
                 </section>

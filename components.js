@@ -61,12 +61,13 @@ function createPartyComponent(party) {
  */
 function createTransactionComponent(transaction, data) {
     const {
-        id, // get id for the button
+        id,
         type,
         amount,
         treasuryId,
         partyId,
         toTreasuryId,
+        customTypeId, // new field
         description,
         createdAt
     } = transaction;
@@ -74,6 +75,7 @@ function createTransactionComponent(transaction, data) {
     const fromTreasury = data.treasuries.find(t => t.id === treasuryId);
     const party = data.parties.find(p => p.id === partyId);
     const toTreasury = data.treasuries.find(t => t.id === toTreasuryId);
+    const customType = data.transactionTypes.find(t => t.id === customTypeId);
 
     const formattedAmount = parseFloat(amount).toLocaleString('ar-EG', {
         style: 'currency',
@@ -104,10 +106,12 @@ function createTransactionComponent(transaction, data) {
     // Also change typeDisplay for the title
     const title = type === 'transfer' ? 'تحويل' : typeDisplay;
 
+    const customTypeInfo = customType ? ` (${customType.name})` : '';
+
     return `
         <div class="list-item transaction-item ${type}" data-id="${id}">
             <div>
-                <p><strong>${title}:</strong> <span class="amount">${formattedAmount}</span></p>
+                <p><strong>${title}${customTypeInfo}:</strong> <span class="amount">${formattedAmount}</span></p>
                 <p class="transaction-details">${details}</p>
                 ${description ? `<p class="transaction-details"><em>الوصف: ${description}</em></p>` : ''}
             </div>
