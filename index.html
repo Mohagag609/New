@@ -3,52 +3,395 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>الرئيسية - نظام الخزينة</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>نظام الخزينة المبسط</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f4f7f9;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            direction: rtl;
+        }
+        .top-nav {
+            background-color: #34495e;
+            padding: 10px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .top-nav button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 0 5px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .top-nav button:hover {
+            background-color: #2980b9;
+        }
+        .top-nav button.active {
+            background-color: #e67e22;
+        }
+        .view {
+            padding: 20px;
+        }
+        main {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        section {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        h1, h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        form { display: flex; flex-direction: column; gap: 10px; }
+        input, select, textarea, button { font-size: 1rem; padding: 10px; border-radius: 4px; border: 1px solid #ccc; width: 100%; box-sizing: border-box; }
+        button { background-color: #3498db; color: white; cursor: pointer; border: none; }
+        .list-container { margin-top: 15px; }
+        .list-item { background-color: #f9f9f9; padding: 10px; border-radius: 4px; margin-bottom: 8px; border-right: 4px solid #3498db; display: flex; justify-content: space-between; align-items: center; }
+        .report-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+        .card { background-color: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; }
+        .card h4 { margin-top: 0; }
+        .card p { font-size: 1.8em; font-weight: bold; }
+    </style>
 </head>
 <body>
 
-    <div class="wrapper">
-        <!-- Sidebar -->
-        <nav id="sidebar">
-            <div class="sidebar-header">
-                <h3>نظام الخزينة</h3>
+    <nav class="top-nav">
+        <button id="nav-main" class="active">الرئيسية</button>
+        <button id="nav-reports">التقارير</button>
+    </nav>
+
+    <div id="main-view" class="view">
+        <main>
+            <section id="treasuries-section">
+                <h2>الخزائن</h2>
+                <form id="add-treasury-form">
+                    <input type="text" id="treasury-name" placeholder="اسم الخزينة" required>
+                    <input type="number" id="treasury-balance" placeholder="الرصيد الافتتاحي" required step="0.01">
+                    <button type="submit">إضافة خزينة</button>
+                </form>
+                <div id="treasuries-list" class="list-container"></div>
+            </section>
+
+            <section id="parties-section">
+                <h2>العملاء والموردين</h2>
+                <form id="add-party-form">
+                    <input type="text" id="party-name" placeholder="اسم العميل/المورد" required>
+                    <select id="party-type" required>
+                        <option value="customer">عميل</option>
+                        <option value="supplier">مورد</option>
+                    </select>
+                    <button type="submit">إضافة جهة</button>
+                </form>
+                <div id="parties-list" class="list-container"></div>
+            </section>
+
+            <section id="transaction-section">
+                <h2>الحركات المالية</h2>
+                <form id="add-transaction-form">
+                    <select id="transaction-type" required>
+                        <option value="income">إيراد</option>
+                        <option value="expense">مصروف</option>
+                        <option value="transfer">تحويل</option>
+                    </select>
+                    <select id="transaction-treasury" required><option value="">من خزينة...</option></select>
+                    <div id="party-group">
+                        <select id="transaction-party"><option value="">اختر الجهة...</option></select>
+                    </div>
+                    <div id="to-treasury-group" style="display: none;">
+                        <select id="transaction-to-treasury"><option value="">إلى خزينة...</option></select>
+                    </div>
+                    <input type="number" id="transaction-amount" placeholder="المبلغ" required step="0.01">
+                    <textarea id="transaction-description" placeholder="الوصف"></textarea>
+                    <button type="submit">تسجيل الحركة</button>
+                </form>
+            </section>
+        </main>
+
+        <section id="transactions-list-section">
+            <h2>كشف الحركات</h2>
+            <div id="transactions-list" class="list-container"></div>
+        </section>
+    </div>
+
+    <div id="reports-view" class="view" style="display: none;">
+        <h1>التقارير المالية</h1>
+        <div class="report-cards">
+            <div class="card">
+                <h4>إجمالي الأرصدة</h4>
+                <p id="total-balance">0.00</p>
             </div>
-            <ul class="list-unstyled components">
-                <li class="active"><a href="index.html">الرئيسية</a></li>
-                <li><a href="treasuries.html">إدارة الخزائن</a></li>
-                <li><a href="parties.html">العملاء والموردين</a></li>
-                <li><a href="transactions.html">الحركات المالية</a></li>
-                <li><a href="reports.html">التقارير</a></li>
-                <li><a href="types.html">أنواع الحركات</a></li>
-            </ul>
-        </nav>
-
-        <!-- Page Content -->
-        <div id="content">
-            <button type="button" id="sidebarCollapse">
-                <span>☰ القائمة</span>
-            </button>
-
-            <header>
-                <h1>لوحة التحكم الرئيسية</h1>
-            </header>
-
-            <main>
-                <section>
-                    <h2>مرحباً بك في نظام إدارة الخزينة</h2>
-                    <p>استخدم القائمة الجانبية للتنقل بين الأقسام المختلفة للنظام.</p>
-                    <!-- I can add summary cards here later -->
-                </section>
-            </main>
+            <div class="card">
+                <h4>إجمالي الإيرادات</h4>
+                <p id="total-income">0.00</p>
+            </div>
+            <div class="card">
+                <h4>إجمالي المصروفات</h4>
+                <p id="total-expenses">0.00</p>
+            </div>
+            <div class="card">
+                <h4>صافي التدفق</h4>
+                <p id="net-flow">0.00</p>
+            </div>
         </div>
     </div>
 
-    <!-- JavaScript files -->
-    <script src="storage.js" defer></script>
-    <script src="components.js" defer></script>
-    <!-- A new navigation script will be needed -->
-    <script src="navigation.js" defer></script>
-    <script src="app.js" defer></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- STATE MANAGEMENT ---
+            let state = {
+                treasuries: [],
+                parties: [],
+                transactions: [],
+                nextId: 1,
+            };
+
+            const APP_STORAGE_KEY = 'simpleTreasuryApp';
+
+            function saveState() {
+                localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(state));
+            }
+
+            function loadState() {
+                const savedState = localStorage.getItem(APP_STORAGE_KEY);
+                if (savedState) {
+                    state = JSON.parse(savedState);
+                }
+            }
+
+            function getNextId() {
+                const id = state.nextId;
+                state.nextId++;
+                return id;
+            }
+
+            // --- DOM Elements ---
+            const navMain = document.getElementById('nav-main');
+            const navReports = document.getElementById('nav-reports');
+            const mainView = document.getElementById('main-view');
+            const reportsView = document.getElementById('reports-view');
+
+            const addTreasuryForm = document.getElementById('add-treasury-form');
+            const treasuryNameInput = document.getElementById('treasury-name');
+            const treasuryBalanceInput = document.getElementById('treasury-balance');
+            const treasuriesList = document.getElementById('treasuries-list');
+
+            const addPartyForm = document.getElementById('add-party-form');
+            const partyNameInput = document.getElementById('party-name');
+            const partyTypeSelect = document.getElementById('party-type');
+            const partiesList = document.getElementById('parties-list');
+
+            const addTransactionForm = document.getElementById('add-transaction-form');
+            const transactionTypeSelect = document.getElementById('transaction-type');
+            const transactionTreasurySelect = document.getElementById('transaction-treasury');
+            const transactionPartySelect = document.getElementById('transaction-party');
+            const transactionToTreasurySelect = document.getElementById('transaction-to-treasury');
+            const transactionAmountInput = document.getElementById('transaction-amount');
+            const transactionDescriptionInput = document.getElementById('transaction-description');
+            const partyGroup = document.getElementById('party-group');
+            const toTreasuryGroup = document.getElementById('to-treasury-group');
+            const transactionsList = document.getElementById('transactions-list');
+
+            // --- RENDER FUNCTIONS ---
+            function renderAll() {
+                renderTreasuries();
+                renderParties();
+                renderTransactions();
+                updateDropdowns();
+            }
+
+            function renderTreasuries() {
+                treasuriesList.innerHTML = '';
+                state.treasuries.forEach(t => {
+                    const item = document.createElement('div');
+                    item.className = 'list-item';
+                    item.innerHTML = `<span>${t.name}</span><span>${parseFloat(t.balance).toFixed(2)}</span>`;
+                    treasuriesList.appendChild(item);
+                });
+            }
+
+            function renderParties() {
+                partiesList.innerHTML = '';
+                state.parties.forEach(p => {
+                    const item = document.createElement('div');
+                    item.className = 'list-item';
+                    item.innerHTML = `<span>${p.name}</span><span>${p.type === 'customer' ? 'عميل' : 'مورد'}</span>`;
+                    partiesList.appendChild(item);
+                });
+            }
+
+            function renderTransactions() {
+                transactionsList.innerHTML = '';
+                [...state.transactions].reverse().forEach(t => {
+                    const item = document.createElement('div');
+                    item.className = 'list-item';
+                    let details = '';
+                    const fromTreasury = state.treasuries.find(tr => tr.id === t.fromTreasuryId)?.name || 'N/A';
+                    if (t.type === 'income' || t.type === 'expense') {
+                        const party = state.parties.find(p => p.id === t.partyId)?.name || 'N/A';
+                        details = t.type === 'income' ? `إيراد من ${party} إلى ${fromTreasury}` : `مصروف إلى ${party} من ${fromTreasury}`;
+                    } else if (t.type === 'transfer') {
+                        const toTreasury = state.treasuries.find(tr => tr.id === t.toTreasuryId)?.name || 'N/A';
+                        details = `تحويل من ${fromTreasury} إلى ${toTreasury}`;
+                    }
+                    item.innerHTML = `<span>${details}</span><span>${parseFloat(t.amount).toFixed(2)}</span>`;
+                    transactionsList.appendChild(item);
+                });
+            }
+
+            function updateDropdowns() {
+                // Clear dropdowns
+                transactionTreasurySelect.innerHTML = '<option value="">من خزينة...</option>';
+                transactionToTreasurySelect.innerHTML = '<option value="">إلى خزينة...</option>';
+                transactionPartySelect.innerHTML = '<option value="">اختر الجهة...</option>';
+                // Populate
+                state.treasuries.forEach(t => {
+                    const opt1 = document.createElement('option');
+                    opt1.value = t.id;
+                    opt1.textContent = t.name;
+                    transactionTreasurySelect.appendChild(opt1);
+                    transactionToTreasurySelect.appendChild(opt1.cloneNode(true));
+                });
+                state.parties.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    opt.textContent = p.name;
+                    transactionPartySelect.appendChild(opt);
+                });
+            }
+
+            // --- EVENT HANDLERS ---
+            navMain.addEventListener('click', () => {
+                mainView.style.display = 'block';
+                reportsView.style.display = 'none';
+                navMain.classList.add('active');
+                navReports.classList.remove('active');
+            });
+
+            navReports.addEventListener('click', () => {
+                mainView.style.display = 'none';
+                reportsView.style.display = 'block';
+                navMain.classList.remove('active');
+                navReports.classList.add('active');
+                const totalBalance = state.treasuries.reduce((sum, t) => sum + parseFloat(t.balance), 0);
+                const totalIncome = state.transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + parseFloat(t.amount), 0);
+                const totalExpenses = state.transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + parseFloat(t.amount), 0);
+                document.getElementById('total-balance').textContent = totalBalance.toFixed(2);
+                document.getElementById('total-income').textContent = totalIncome.toFixed(2);
+                document.getElementById('total-expenses').textContent = totalExpenses.toFixed(2);
+                document.getElementById('net-flow').textContent = (totalIncome - totalExpenses).toFixed(2);
+            });
+
+            addTreasuryForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                state.treasuries.push({
+                    id: getNextId(),
+                    name: treasuryNameInput.value,
+                    balance: parseFloat(treasuryBalanceInput.value) || 0
+                });
+                addTreasuryForm.reset();
+                saveState();
+                renderAll();
+            });
+
+            addPartyForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                state.parties.push({
+                    id: getNextId(),
+                    name: partyNameInput.value,
+                    type: partyTypeSelect.value
+                });
+                addPartyForm.reset();
+                saveState();
+                renderAll();
+            });
+
+            transactionTypeSelect.addEventListener('change', () => {
+                const type = transactionTypeSelect.value;
+                partyGroup.style.display = type === 'transfer' ? 'none' : 'block';
+                toTreasuryGroup.style.display = type === 'transfer' ? 'block' : 'none';
+            });
+
+            addTransactionForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const type = transactionTypeSelect.value;
+                const amount = parseFloat(transactionAmountInput.value);
+                const fromTreasuryId = parseInt(transactionTreasurySelect.value);
+                const toTreasuryId = parseInt(transactionToTreasurySelect.value);
+                const partyId = parseInt(transactionPartySelect.value);
+
+                const fromTreasury = state.treasuries.find(t => t.id === fromTreasuryId);
+                if (!fromTreasury || isNaN(amount) || amount <= 0) {
+                    alert('بيانات غير صحيحة.');
+                    return;
+                }
+
+                if (type === 'expense' || type === 'transfer') {
+                    if (fromTreasury.balance < amount) {
+                        alert('الرصيد غير كافٍ.');
+                        return;
+                    }
+                }
+
+                if (type === 'transfer') {
+                    if (isNaN(toTreasuryId) || fromTreasuryId === toTreasuryId) {
+                        alert('يرجى اختيار خزينة مختلفة للتحويل إليها.');
+                        return;
+                    }
+                    const toTreasury = state.treasuries.find(t => t.id === toTreasuryId);
+                    if (!toTreasury) {
+                        alert('الخزينة المحول إليها غير موجودة.');
+                        return;
+                    }
+                    fromTreasury.balance -= amount;
+                    toTreasury.balance += amount;
+                } else {
+                    if (isNaN(partyId)) {
+                        alert('يرجى اختيار جهة.');
+                        return;
+                    }
+                    if (type === 'income') fromTreasury.balance += amount;
+                    else if (type === 'expense') fromTreasury.balance -= amount;
+                }
+
+                state.transactions.push({
+                    id: getNextId(),
+                    type: type,
+                    amount: amount,
+                    fromTreasuryId: fromTreasuryId,
+                    toTreasuryId: type === 'transfer' ? toTreasuryId : null,
+                    partyId: type !== 'transfer' ? partyId : null,
+                    description: transactionDescriptionInput.value
+                });
+
+                addTransactionForm.reset();
+                saveState();
+                renderAll();
+            });
+
+            // --- INITIALIZATION ---
+            function init() {
+                loadState();
+                renderAll();
+                navMain.click();
+            }
+
+            init();
+        });
+    </script>
 </body>
 </html>
