@@ -5,28 +5,36 @@ body {
 }
 
 @media print {
-    /* Hide non-essential UI parts when printing */
-    #sidebar, #main-nav, .no-print {
+    /* Hide everything in the body except the main app container */
+    body > *:not(#app) {
+        display: none;
+    }
+
+    /* Hide the sidebar */
+    #sidebar {
         display: none !important;
     }
 
-    /* Ensure the main content takes up the full page */
+    /* Let the main content fill the page */
     #main-content {
+        width: 100% !important;
         padding: 0 !important;
         margin: 0 !important;
     }
 
-    /* By default, hide all pages within main-content */
+    /* Hide all individual page divs by default */
     #main-content > div {
-        display: none;
+        display: none !important;
     }
 
-    /*
-     A bit of a hack for SPAs: a class will be added via JS to the
-     page being printed to make it visible.
-    */
+    /* Only show the page that we are actively printing */
     #main-content > .printing {
         display: block !important;
+    }
+
+    /* Hide any element specifically marked as no-print */
+    .printing .no-print {
+        display: none !important;
     }
 
     /* General table styling for print */

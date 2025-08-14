@@ -12,6 +12,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelBtn = document.getElementById('cancel-voucher-btn');
     const tableBody = document.getElementById('vouchers-table-body');
 
+    // Filter fields
+    const filterFromDate = document.getElementById('voucher-filter-from-date');
+    const filterToDate = document.getElementById('voucher-filter-to-date');
+    const filterBtn = document.getElementById('voucher-filter-btn');
+
     // Form fields
     const voucherIdInput = document.getElementById('voucher-id');
     const voucherNoInput = document.getElementById('voucher-no');
@@ -141,13 +146,19 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- Main Render Function ---
-    const renderVouchers = async () => {
+    const renderVouchers = async (filters = {}) => {
         try {
-            const [vouchers, cashboxes, parties] = await Promise.all([
-            db.vouchers.orderBy('id').reverse().toArray(),
+            let allVouchers = await db.vouchers.orderBy('id').reverse().toArray();
+
+            if (filters.fromDate && filters.toDate) {
+                allVouchers = allVouchers.filter(v => v.date >= filters.fromDate && v.date <= filters.toDate);
+            }
+
+            const [cashboxes, parties] = await Promise.all([
                 db.cashboxes.toArray(),
                 db.parties.toArray()
             ]);
+            const vouchers = allVouchers;
 
             const cashboxMap = new Map(cashboxes.map(c => [c.id, c.name]));
             const partyMap = new Map(parties.map(p => [p.id, p.name]));
@@ -301,7 +312,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.addEventListener('show', (e) => {
         if (e.detail.pageId === 'page-vouchers') {
+            filterFromDate.value = '';
+            filterToDate.value = '';
             renderVouchers();
+        }
+    });
+
+    filterBtn.addEventListener('click', () => {
+        const fromDate = filterFromDate.value;
+        const toDate = filterToDate.value;
+        if (fromDate && toDate) {
+            renderVouchers({ fromDate, toDate });
+        } else {
+            alert('الرجاء تحديد تاريخ البداية والنهاية.');
         }
     });
 
