@@ -53,8 +53,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('account-name').innerHTML = account ? account.name : '---';
             document.getElementById('description').innerHTML = voucher.description || '---';
 
-            document.getElementById('amount-in-numbers').textContent = new Intl.NumberFormat('ar-SA', { style: 'currency', currency: 'SAR' }).format(amount);
-            document.getElementById('amount-in-words').textContent = tafqeet(amount);
+            const currency = localStorage.getItem('currency') || 'EGP';
+            document.getElementById('currency').textContent = currency;
+            document.getElementById('amount-in-numbers').textContent = new Intl.NumberFormat('ar-SA', { style: 'currency', currency: currency }).format(amount);
+            document.getElementById('amount-in-words').textContent = tafqeet(amount) + ` ${currency}`;
 
             // Automatically trigger print dialog after a short delay
             setTimeout(() => window.print(), 500);

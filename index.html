@@ -485,7 +485,10 @@
                                 <label for="company-name-setting" class="block text-sm font-medium text-gray-700 text-right">اسم الشركة</label>
                                 <input type="text" id="company-name-setting" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="اكتب اسم شركتك هنا">
                             </div>
-                            <!-- Future settings like currency or logo can be added here -->
+                             <div>
+                                <label for="currency-setting" class="block text-sm font-medium text-gray-700 text-right">العملة (e.g., EGP, SAR)</label>
+                                <input type="text" id="currency-setting" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="EGP">
+                            </div>
                         </div>
                         <div class="mt-6">
                             <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
@@ -514,6 +517,16 @@
                             استيراد البيانات
                         </button>
                     </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md max-w-lg mt-8 border-t-4 border-red-500">
+                     <h3 class="text-xl font-bold mb-4 text-red-700">منطقة الخطر</h3>
+                     <p class="text-sm text-gray-600 mb-4">
+                        سيؤدي هذا الإجراء إلى حذف قاعدة البيانات بالكامل بما في ذلك جميع السندات والإعدادات. لا يمكن التراجع عن هذا الإجراء.
+                     </p>
+                     <button id="factory-reset-btn" class="w-full bg-red-700 hover:bg-red-900 text-white font-bold py-2 px-4 rounded">
+                        مسح جميع بيانات التطبيق
+                    </button>
                 </div>
             </div>
         </main>

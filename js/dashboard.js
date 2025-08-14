@@ -13,7 +13,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const netIncomeCard = document.getElementById('net-income-card');
     const recentVouchersTableBody = document.getElementById('recent-vouchers-table-body');
 
-    const formatCurrency = (amount) => new Intl.NumberFormat('ar-SA', { style: 'currency', currency: 'SAR' }).format(amount);
+    const formatCurrency = (amount) => {
+        const currency = localStorage.getItem('currency') || 'EGP';
+        return new Intl.NumberFormat('ar-SA', { style: 'currency', currency: currency }).format(amount);
+    }
 
     const renderDashboard = async () => {
         try {

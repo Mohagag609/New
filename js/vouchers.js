@@ -212,9 +212,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 await db.transaction('rw', db.vouchers, async () => {
                     const lastVoucher = await db.vouchers.orderBy('id').last();
-                    const lastNo = lastVoucher ? Number(lastVoucher.voucherNo) : 0;
-                    const voucherNoOut = lastNo + 1;
-                    const voucherNoIn = lastNo + 2;
+                    let lastNo = 0;
+                    if (lastVoucher && lastVoucher.voucherNo) {
+                        if (String(lastVoucher.voucherNo).includes('-')) {
+                            lastNo = parseInt(lastVoucher.voucherNo.split('-')[1], 10);
+                        } else {
+                            lastNo = parseInt(lastVoucher.voucherNo, 10);
+                        }
+                    }
+                    const voucherNoOut = isNaN(lastNo) ? 1 : lastNo + 1;
+                    const voucherNoIn = isNaN(lastNo) ? 2 : lastNo + 2;
 
                     const toCashboxText = toCashboxSelect.options[toCashboxSelect.selectedIndex].text;
                     const fromCashboxText = fromCashboxSelect.options[fromCashboxSelect.selectedIndex].text;
@@ -263,8 +270,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 await db.transaction('rw', db.vouchers, async () => {
                     const lastVoucher = await db.vouchers.orderBy('id').last();
-                    const lastNo = lastVoucher ? Number(lastVoucher.voucherNo) : 0;
-                    voucherData.voucherNo = lastNo + 1;
+                    let lastNo = 0;
+                    if (lastVoucher && lastVoucher.voucherNo) {
+                        if (String(lastVoucher.voucherNo).includes('-')) {
+                            lastNo = parseInt(lastVoucher.voucherNo.split('-')[1], 10);
+                        } else {
+                            lastNo = parseInt(lastVoucher.voucherNo, 10);
+                        }
+                    }
+                    voucherData.voucherNo = isNaN(lastNo) ? 1 : lastNo + 1;
                     await db.vouchers.add(voucherData);
                 });
 

@@ -4,18 +4,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const settingsForm = document.getElementById('settings-form');
     const companyNameInput = document.getElementById('company-name-setting');
+    const currencyInput = document.getElementById('currency-setting');
 
     const loadSettings = () => {
         const companyName = localStorage.getItem('companyName');
+        const currency = localStorage.getItem('currency') || 'EGP'; // Default to EGP
         if (companyName) {
             companyNameInput.value = companyName;
         }
+        currencyInput.value = currency;
     };
 
     const saveSettings = (event) => {
         event.preventDefault();
         const companyName = companyNameInput.value.trim();
+        const currency = currencyInput.value.trim().toUpperCase();
+
+        if (currency.length !== 3) {
+            alert('الرجاء إدخال رمز عملة صحيح مكون من 3 أحرف (مثل EGP).');
+            return;
+        }
+
         localStorage.setItem('companyName', companyName);
+        localStorage.setItem('currency', currency);
         alert('تم حفظ الإعدادات بنجاح!');
     };
 
@@ -112,6 +123,34 @@ document.addEventListener('DOMContentLoaded', () => {
     exportBtn.addEventListener('click', exportData);
     importBtn.addEventListener('click', () => importFileInput.click());
     importFileInput.addEventListener('change', importData);
+
+    const factoryResetBtn = document.getElementById('factory-reset-btn');
+    const factoryReset = async () => {
+        const confirmation1 = confirm('تحذير! هل أنت متأكد أنك تريد حذف جميع البيانات بشكل نهائي؟ لا يمكن التراجع عن هذا الإجراء.');
+        if (!confirmation1) return;
+
+        const confirmation2 = prompt('للتأكيد، يرجى كتابة "مسح" في المربع أدناه:');
+        if (confirmation2 !== 'مسح') {
+            alert('لم يتم التأكيد. تم إلغاء العملية.');
+            return;
+        }
+
+        try {
+            await Promise.all([
+                db.vouchers.clear(),
+                db.accounts.clear(),
+                db.parties.clear(),
+                db.cashboxes.clear()
+            ]);
+            localStorage.clear(); // Also clear settings like company name and currency
+            alert('تم مسح جميع البيانات بنجاح. سيتم إعادة تحميل التطبيق.');
+            window.location.reload();
+        } catch (error) {
+            console.error('Failed to clear database:', error);
+            alert('حدث خطأ أثناء محاولة مسح البيانات.');
+        }
+    };
+    factoryResetBtn.addEventListener('click', factoryReset);
 
 
     document.addEventListener('show', (e) => {
