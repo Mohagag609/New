@@ -113,6 +113,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Modal Management ---
     const openModal = async (mode, voucher = null) => {
         form.reset();
+
+        // Populate and set the movement type dropdown first
+        movementTypeSelect.innerHTML = `
+            <option value="Receipt">سند قبض</option>
+            <option value="Payment">سند صرف</option>
+            <option value="Transfer">تحويل</option>
+        `;
+        movementTypeSelect.value = mode;
+
         voucherDateInput.valueAsDate = new Date(); // Default to today
         populateAllDropdowns();
 
@@ -287,5 +296,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const voucherId = target.dataset.id;
             window.open(`print-voucher.html?id=${voucherId}`, '_blank', 'width=800,height=600');
         }
+    });
+
+    movementTypeSelect.addEventListener('change', (e) => {
+        const newMode = e.target.value;
+        configureFormForMode(newMode);
     });
 });
