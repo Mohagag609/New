@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!page) return;
 
     const addBtn = document.getElementById('add-party-btn');
+    const printBtn = document.getElementById('print-parties-btn');
     const modal = document.getElementById('party-modal');
     const modalTitle = document.getElementById('party-modal-title');
     const cancelBtn = document.getElementById('cancel-party-btn');
@@ -122,5 +123,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.detail.pageId === 'page-parties') {
             renderParties();
         }
+    });
+
+    printBtn.addEventListener('click', () => {
+        page.classList.add('printing');
+        window.onafterprint = () => {
+            page.classList.remove('printing');
+        };
+        window.print();
     });
 });

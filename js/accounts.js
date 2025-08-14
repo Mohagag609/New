@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!page) return;
 
     const addBtn = document.getElementById('add-account-btn');
+    const printBtn = document.getElementById('print-accounts-btn');
     const modal = document.getElementById('account-modal');
     const modalTitle = document.getElementById('account-modal-title');
     const cancelBtn = document.getElementById('cancel-account-btn');
@@ -115,5 +116,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.detail.pageId === 'page-accounts') {
             renderAccounts();
         }
+    });
+
+    printBtn.addEventListener('click', () => {
+        page.classList.add('printing');
+        window.onafterprint = () => {
+            page.classList.remove('printing');
+        };
+        window.print();
     });
 });

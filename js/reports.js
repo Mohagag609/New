@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const toDateInput = document.getElementById('report-to-date');
     const generateBtn = document.getElementById('generate-report-btn');
     const exportBtn = document.getElementById('export-csv-btn');
+    const printBtn = document.getElementById('print-report-btn');
     const resultsDiv = document.getElementById('report-results');
     const summaryDiv = document.getElementById('report-summary');
     const tableBody = document.getElementById('report-table-body');
@@ -138,6 +139,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Event Listeners ---
     generateBtn.addEventListener('click', generateReport);
     exportBtn.addEventListener('click', exportToCSV);
+    printBtn.addEventListener('click', () => {
+        page.classList.add('printing');
+        window.print();
+    });
+
+    // Clean up the printing class after print dialog is closed
+    window.onafterprint = () => {
+        page.classList.remove('printing');
+    };
 
     document.addEventListener('show', (e) => {
         if (e.detail.pageId === 'page-reports') {

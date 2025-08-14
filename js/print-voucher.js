@@ -1,10 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Basic Tafqeet (number to words) implementation
-    // This is a simplified version for demonstration.
+    // TODO: Implement a proper Tafqeet library for number to Arabic words conversion.
+    // The google_search tool was unavailable to find a suitable library.
     function tafqeet(number) {
-        // Will be implemented later if needed, returning a placeholder for now.
-        // For a real app, a proper library should be used.
-        return `فقط ${number} لا غير`;
+        return `(خاصية التفقيط غير مفعلة) - ${number}`;
     }
 
     const loadVoucherData = async () => {
@@ -50,11 +48,12 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('voucher-no').textContent = voucher.voucherNo;
             document.getElementById('voucher-date').textContent = voucher.date;
 
-            document.getElementById('party-name').textContent = party ? party.name : '---';
-            document.getElementById('account-name').textContent = account ? account.name : '---';
-            document.getElementById('description').textContent = voucher.description;
+            // Using .innerHTML to allow for '---' if data is missing
+            document.getElementById('party-name').innerHTML = party ? party.name : '---';
+            document.getElementById('account-name').innerHTML = account ? account.name : '---';
+            document.getElementById('description').innerHTML = voucher.description || '---';
 
-            document.getElementById('amount-in-numbers').textContent = `${new Intl.NumberFormat().format(amount)} ${'SAR'}`; // Replace with currency from settings later
+            document.getElementById('amount-in-numbers').textContent = new Intl.NumberFormat('ar-SA', { style: 'currency', currency: 'SAR' }).format(amount);
             document.getElementById('amount-in-words').textContent = tafqeet(amount);
 
             // Automatically trigger print dialog after a short delay

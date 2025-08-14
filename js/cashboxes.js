@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!cashboxPage) return;
 
     const addCashboxBtn = document.getElementById('add-cashbox-btn');
+    const printBtn = document.getElementById('print-cashboxes-btn');
     const modal = document.getElementById('cashbox-modal');
     const modalTitle = document.getElementById('modal-title');
     const cancelButton = document.getElementById('cancel-btn');
@@ -169,5 +170,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.detail.pageId === 'page-cashboxes') {
             renderCashboxes();
         }
+    });
+
+    printBtn.addEventListener('click', () => {
+        cashboxPage.classList.add('printing');
+        window.onafterprint = () => {
+            cashboxPage.classList.remove('printing');
+        };
+        window.print();
     });
 });

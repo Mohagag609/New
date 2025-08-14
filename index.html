@@ -49,11 +49,14 @@
 
             <!-- Other pages will be hidden by default -->
             <div id="page-cashboxes" class="hidden">
-                <div class="flex justify-between items-center mb-6">
+                <div class="flex justify-between items-center mb-6 no-print">
                     <h2 class="text-3xl font-bold">إدارة الخزن</h2>
-                    <button id="add-cashbox-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                        إضافة خزنة جديدة
-                    </button>
+                    <div class="space-x-2 space-x-reverse">
+                        <button id="print-cashboxes-btn" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">طباعة</button>
+                        <button id="add-cashbox-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                            إضافة خزنة جديدة
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Cashboxes Table -->
@@ -119,11 +122,14 @@
 
             </div>
             <div id="page-parties" class="hidden">
-                <div class="flex justify-between items-center mb-6">
+                <div class="flex justify-between items-center mb-6 no-print">
                     <h2 class="text-3xl font-bold">إدارة العملاء والموردين</h2>
-                    <button id="add-party-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                        إضافة طرف جديد
-                    </button>
+                    <div class="space-x-2 space-x-reverse">
+                        <button id="print-parties-btn" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">طباعة</button>
+                        <button id="add-party-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                            إضافة طرف جديد
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Parties Table -->
@@ -186,11 +192,14 @@
                 </div>
             </div>
             <div id="page-accounts" class="hidden">
-                <div class="flex justify-between items-center mb-6">
+                <div class="flex justify-between items-center mb-6 no-print">
                     <h2 class="text-3xl font-bold">إدارة أنواع الحسابات</h2>
-                    <button id="add-account-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                        إضافة حساب جديد
-                    </button>
+                    <div class="space-x-2 space-x-reverse">
+                        <button id="print-accounts-btn" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">طباعة</button>
+                        <button id="add-account-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                            إضافة حساب جديد
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Accounts Table -->
@@ -351,7 +360,7 @@
                 <h2 class="text-3xl font-bold mb-6">تقرير دفتر الخزنة</h2>
 
                 <!-- Filters -->
-                <div class="bg-white p-4 rounded-lg shadow-md mb-6">
+                <div class="bg-white p-4 rounded-lg shadow-md mb-6 no-print">
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
                             <label for="report-cashbox" class="block text-sm font-medium text-gray-700 text-right">الخزنة</label>
@@ -377,9 +386,14 @@
                 <div id="report-results" class="hidden">
                     <div class="flex justify-between items-center mb-4">
                         <div id="report-summary" class="text-lg"></div>
-                        <button id="export-csv-btn" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
-                            تصدير CSV
-                        </button>
+                        <div class="space-x-2 space-x-reverse no-print">
+                            <button id="print-report-btn" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+                                طباعة التقرير
+                            </button>
+                            <button id="export-csv-btn" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                                تصدير CSV
+                            </button>
+                        </div>
                     </div>
                     <div class="bg-white shadow-md rounded my-6">
                         <table class="min-w-full leading-normal">

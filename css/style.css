@@ -3,3 +3,43 @@ body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
+
+@media print {
+    /* Hide non-essential UI parts when printing */
+    #sidebar, #main-nav, .no-print {
+        display: none !important;
+    }
+
+    /* Ensure the main content takes up the full page */
+    #main-content {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* By default, hide all pages within main-content */
+    #main-content > div {
+        display: none;
+    }
+
+    /*
+     A bit of a hack for SPAs: a class will be added via JS to the
+     page being printed to make it visible.
+    */
+    #main-content > .printing {
+        display: block !important;
+    }
+
+    /* General table styling for print */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th, td {
+        border: 1px solid #ccc;
+        padding: 8px;
+        text-align: right;
+    }
+    thead {
+        background-color: #f2f2f2;
+    }
+}

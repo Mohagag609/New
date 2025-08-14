@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderVouchers = async () => {
         try {
             const [vouchers, cashboxes, parties] = await Promise.all([
-                db.vouchers.orderBy('date').reverse().toArray(),
+            db.vouchers.orderBy('id').reverse().toArray(),
                 db.cashboxes.toArray(),
                 db.parties.toArray()
             ]);
