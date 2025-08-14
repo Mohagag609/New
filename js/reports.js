@@ -4,6 +4,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- DOM Elements ---
     const cashboxSelect = document.getElementById('report-cashbox');
+    const searchTypeRadios = document.querySelectorAll('input[name="report-search-type"]');
+    const dateFiltersDiv = document.getElementById('report-filters-date');
+    const voucherFilterDiv = document.getElementById('report-filters-voucher');
     const fromDateInput = document.getElementById('report-from-date');
     const toDateInput = document.getElementById('report-to-date');
     const voucherNoInput = document.getElementById('report-voucher-no');
@@ -38,48 +41,44 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const clearReport = () => {
-        cashboxSelect.value = '';
-        fromDateInput.value = '';
-        toDateInput.value = '';
-        voucherNoInput.value = '';
+        // Resets the form to its initial state
+        initializePage();
         resultsDiv.classList.add('hidden');
         tableBody.innerHTML = '';
         reportData = [];
     };
 
     const generateReport = async () => {
+        const searchType = document.querySelector('input[name="report-search-type"]:checked').value;
         const cashboxId = Number(cashboxSelect.value);
-        const fromDate = fromDateInput.value;
-        const toDate = toDateInput.value;
-        const voucherNo = voucherNoInput.value.trim();
 
         if (!cashboxId) {
             alert('الرجاء تحديد خزنة أولاً.');
             return;
         }
 
-        if (!voucherNo && (!fromDate || !toDate)) {
-            alert('الرجاء تحديد نطاق التاريخ أو إدخال رقم سند.');
-            return;
-        }
-
         try {
             let periodVouchers = [];
             let reportStartDate;
-
             const cashbox = await db.cashboxes.get(cashboxId);
             if (!cashbox) return alert('لم يتم العثور على الخزنة.');
 
-            if (voucherNo) {
+            if (searchType === 'voucher') {
+                const voucherNoStr = voucherNoInput.value.trim();
+                const voucherNo = voucherNoStr ? Number(voucherNoStr) : null;
+                if (!voucherNo || isNaN(voucherNo)) return alert('الرجاء إدخال رقم سند صالح.');
+
                 const voucher = await db.vouchers.where('voucherNo').equals(voucherNo).first();
                 if (!voucher) return alert('لم يتم العثور على سند بهذا الرقم.');
                 if (voucher.cashboxId !== cashboxId) return alert('هذا السند لا يخص الخزنة المحددة.');
 
                 periodVouchers = [voucher];
                 reportStartDate = voucher.date;
-                fromDateInput.value = voucher.date;
-                toDateInput.value = voucher.date;
-            } else {
+            } else { // search by date
+                const fromDate = fromDateInput.value;
+                const toDate = toDateInput.value;
+                if (!fromDate || !toDate) return alert('الرجاء تحديد نطاق التاريخ.');
+
                 periodVouchers = await db.vouchers
                     .where('cashboxId').equals(cashboxId)
                     .and(v => v.date >= fromDate && v.date <= toDate)
@@ -186,7 +185,19 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.removeChild(link);
     };
 
+    const handleSearchTypeChange = () => {
+        const searchType = document.querySelector('input[name="report-search-type"]:checked').value;
+        if (searchType === 'date') {
+            dateFiltersDiv.classList.remove('hidden');
+            voucherFilterDiv.classList.add('hidden');
+        } else {
+            dateFiltersDiv.classList.add('hidden');
+            voucherFilterDiv.classList.remove('hidden');
+        }
+    };
+
     // --- Event Listeners ---
+    searchTypeRadios.forEach(radio => radio.addEventListener('change', handleSearchTypeChange));
     generateBtn.addEventListener('click', generateReport);
     clearBtn.addEventListener('click', clearReport);
     exportBtn.addEventListener('click', exportToCSV);

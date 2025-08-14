@@ -1,8 +1,46 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // TODO: Implement a proper Tafqeet library for number to Arabic words conversion.
-    // The google_search tool was unavailable to find a suitable library.
+    // Tafqeet (number to words) - Basic Implementation
+    // This is a simplified version for numbers up to 999.
+    // It does not handle complex Arabic grammar (gender, etc.) perfectly.
+    // A proper library would be needed for a full, professional solution.
     function tafqeet(number) {
-        return `(خاصية التفقيط غير مفعلة) - ${number}`;
+        const units = ["", "واحد", "اثنان", "ثلاثة", "أربعة", "خمسة", "ستة", "سبعة", "ثمانية", "تسعة"];
+        const teens = ["عشرة", "أحد عشر", "اثنا عشر", "ثلاثة عشر", "أربعة عشر", "خمسة عشر", "ستة عشر", "سبعة عشر", "ثمانية عشر", "تسعة عشر"];
+        const tens = ["", "عشرة", "عشرون", "ثلاثون", "أربعون", "خمسون", "ستون", "سبعون", "ثمانون", "تسعون"];
+        const hundreds = ["", "مئة", "مئتان", "ثلاثمئة", "أربعمئة", "خمسمئة", "ستمئة", "سبعمئة", "ثمانمئة", "تسعمئة"];
+
+        if (number === 0) return "صفر";
+        if (number > 999) return `(التفقيط للأرقام حتى 999 فقط) - ${number}`;
+
+        let words = [];
+
+        // Hundreds
+        let h = Math.floor(number / 100);
+        if (h > 0) {
+            words.push(hundreds[h]);
+            number %= 100;
+        }
+
+        // Tens and Units
+        if (number > 0) {
+            if (words.length > 0) words.push("و");
+
+            if (number < 10) {
+                words.push(units[number]);
+            } else if (number < 20) {
+                words.push(teens[number - 10]);
+            } else {
+                let u = number % 10;
+                let t = Math.floor(number / 10);
+                if (u > 0) {
+                    words.push(units[u]);
+                    words.push("و");
+                }
+                words.push(tens[t]);
+            }
+        }
+
+        return "فقط " + words.join(" ") + " لا غير";
     }
 
     const loadVoucherData = async () => {
