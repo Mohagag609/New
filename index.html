@@ -361,7 +361,7 @@
 
                 <!-- Filters -->
                 <div class="bg-white p-4 rounded-lg shadow-md mb-6 no-print">
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                         <div>
                             <label for="report-cashbox" class="block text-sm font-medium text-gray-700 text-right">الخزنة</label>
                             <select id="report-cashbox" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></select>
@@ -374,9 +374,16 @@
                             <label for="report-to-date" class="block text-sm font-medium text-gray-700 text-right">إلى تاريخ</label>
                             <input type="date" id="report-to-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                         </div>
-                        <div class="self-end">
+                        <div>
+                            <label for="report-voucher-no" class="block text-sm font-medium text-gray-700 text-right">أو برقم السند</label>
+                            <input type="text" id="report-voucher-no" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="e.g., 2024-000001">
+                        </div>
+                        <div class="self-end space-y-2">
                             <button id="generate-report-btn" class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                                 عرض التقرير
+                            </button>
+                            <button id="clear-report-btn" class="w-full bg-gray-400 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">
+                                مسح
                             </button>
                         </div>
                     </div>
