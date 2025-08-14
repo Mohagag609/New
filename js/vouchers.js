@@ -65,12 +65,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- Voucher Number ---
+    // This logic is now handled inside the form submission transaction for safety.
     const generateVoucherNo = async () => {
-        const lastVoucher = await db.vouchers.orderBy('id').last();
-        const lastNo = lastVoucher ? parseInt(lastVoucher.voucherNo.split('-')[1]) : 0;
-        const newNo = (lastNo + 1).toString().padStart(6, '0');
-        const year = new Date().getFullYear();
-        return `${year}-${newNo}`;
+        // DEPRECATED - new logic is transactional.
+        return 1;
     };
 
     // --- UI Configuration ---
@@ -214,10 +212,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 await db.transaction('rw', db.vouchers, async () => {
                     const lastVoucher = await db.vouchers.orderBy('id').last();
-                    const lastNo = lastVoucher ? parseInt(lastVoucher.voucherNo.split('-')[1]) : 0;
-                    const year = new Date().getFullYear();
-                    const voucherNoOut = `${year}-${(lastNo + 1).toString().padStart(6, '0')}`;
-                    const voucherNoIn = `${year}-${(lastNo + 2).toString().padStart(6, '0')}`;
+                    const lastNo = lastVoucher ? Number(lastVoucher.voucherNo) : 0;
+                    const voucherNoOut = lastNo + 1;
+                    const voucherNoIn = lastNo + 2;
 
                     const toCashboxText = toCashboxSelect.options[toCashboxSelect.selectedIndex].text;
                     const fromCashboxText = fromCashboxSelect.options[fromCashboxSelect.selectedIndex].text;
@@ -245,7 +242,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             } else { // Receipt or Payment
                 const voucherData = {
-                    voucherNo: await generateVoucherNo(),
                     date: voucherDateInput.value,
                     cashboxId: Number(cashboxSelect.value),
                     movementType: currentVoucherMode,
@@ -265,8 +261,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (currentVoucherMode === 'Receipt' && voucherData.debit <= 0) return alert('مبلغ القبض يجب أن يكون أكبر من صفر.');
                 if (currentVoucherMode === 'Payment' && voucherData.credit <= 0) return alert('مبلغ الصرف يجب أن يكون أكبر من صفر.');
 
+                await db.transaction('rw', db.vouchers, async () => {
+                    const lastVoucher = await db.vouchers.orderBy('id').last();
+                    const lastNo = lastVoucher ? Number(lastVoucher.voucherNo) : 0;
+                    voucherData.voucherNo = lastNo + 1;
+                    await db.vouchers.add(voucherData);
+                });
 
-                await db.vouchers.add(voucherData);
                 alert('تم حفظ السند بنجاح.');
             }
 

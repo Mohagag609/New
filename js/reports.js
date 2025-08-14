@@ -192,13 +192,11 @@ document.addEventListener('DOMContentLoaded', () => {
     exportBtn.addEventListener('click', exportToCSV);
     printBtn.addEventListener('click', () => {
         page.classList.add('printing');
+        window.onafterprint = () => {
+            page.classList.remove('printing');
+        };
         window.print();
     });
-
-    // Clean up the printing class after print dialog is closed
-    window.onafterprint = () => {
-        page.classList.remove('printing');
-    };
 
     document.addEventListener('show', (e) => {
         if (e.detail.pageId === 'page-reports') {

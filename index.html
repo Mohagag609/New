@@ -43,8 +43,62 @@
         <main id="main-content" class="flex-1 p-10">
             <!-- Page content will be loaded here -->
             <div id="page-dashboard">
-                <h2 class="text-3xl font-bold">لوحة التحكم</h2>
-                <p class="mt-4">مرحباً بك. سيتم عرض ملخص الأرصدة والحركات هنا.</p>
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold">لوحة التحكم</h2>
+                    <div class="flex items-center space-x-4 space-x-reverse no-print">
+                        <div>
+                            <label for="dash-from-date" class="block text-sm font-medium text-gray-700 text-right">من</label>
+                            <input type="date" id="dash-from-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div>
+                            <label for="dash-to-date" class="block text-sm font-medium text-gray-700 text-right">إلى</label>
+                            <input type="date" id="dash-to-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div class="self-end">
+                             <button id="dash-refresh-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">تحديث</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-lg font-semibold text-gray-500">إجمالي الأرصدة الحالية</h3>
+                        <p id="total-balance-card" class="text-3xl font-bold mt-2 text-blue-600">0.00</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-lg font-semibold text-gray-500">إجمالي الإيرادات (الفترة)</h3>
+                        <p id="total-revenue-card" class="text-3xl font-bold mt-2 text-green-600">0.00</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-lg font-semibold text-gray-500">إجمالي المصروفات (الفترة)</h3>
+                        <p id="total-expenses-card" class="text-3xl font-bold mt-2 text-red-600">0.00</p>
+                    </div>
+                     <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-lg font-semibold text-gray-500">صافي الدخل (الفترة)</h3>
+                        <p id="net-income-card" class="text-3xl font-bold mt-2 text-gray-800">0.00</p>
+                    </div>
+                </div>
+
+                <!-- Recent Transactions -->
+                <div class="mt-8">
+                    <h3 class="text-2xl font-bold mb-4">أحدث الحركات</h3>
+                    <div class="bg-white shadow-md rounded my-6">
+                         <table class="min-w-full leading-normal">
+                            <thead>
+                                <tr>
+                                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">رقم السند</th>
+                                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">التاريخ</th>
+                                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">البيان</th>
+                                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">المبلغ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recent-vouchers-table-body">
+                                <!-- Recent vouchers will be listed here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
             <!-- Other pages will be hidden by default -->
@@ -472,6 +526,7 @@
     <script src="js/vouchers.js"></script>
     <script src="js/reports.js"></script>
     <script src="js/settings.js"></script>
+    <script src="js/dashboard.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>
