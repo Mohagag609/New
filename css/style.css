@@ -5,39 +5,46 @@ body {
 }
 
 @media print {
-    /* Hide everything in the body except the main app container */
-    body > *:not(#app) {
-        display: none;
-    }
+  /* Default state: hide everything */
+  body > * {
+    display: none !important;
+  }
 
-    /* Hide the sidebar */
-    #sidebar {
-        display: none !important;
-    }
+  /* When printing is active, show the app container and its ancestors */
+  body.is-printing,
+  body.is-printing > #app {
+    display: block !important;
+  }
 
-    /* Let the main content fill the page */
-    #main-content {
-        width: 100% !important;
-        padding: 0 !important;
-        margin: 0 !important;
-    }
+  /* Inside the app, hide the sidebar */
+  body.is-printing #sidebar {
+    display: none !important;
+  }
 
-    /* Hide all individual page divs by default */
-    #main-content > div {
-        display: none !important;
-    }
+  /* Make the main content area fill the page */
+  body.is-printing #main-content {
+    display: block !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
 
-    /* Only show the page that we are actively printing */
-    #main-content > .printing {
-        display: block !important;
-    }
+  /* Hide all direct children (pages) of main-content */
+  body.is-printing #main-content > * {
+    display: none !important;
+  }
 
-    /* Hide any element specifically marked as no-print */
-    .printing .no-print {
-        display: none !important;
-    }
+  /* UN-HIDE the specific page we want to print */
+  body.is-printing #main-content > .printing {
+    display: block !important;
+  }
 
-    /* General table styling for print */
+  /* Hide elements within the printing page that are marked no-print */
+  .printing .no-print {
+    display: none !important;
+  }
+
+  /* General table styling for print */
     table {
         width: 100%;
         border-collapse: collapse;

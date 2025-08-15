@@ -119,8 +119,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     printBtn.addEventListener('click', () => {
+        document.body.classList.add('is-printing');
         page.classList.add('printing');
         window.onafterprint = () => {
+            document.body.classList.remove('is-printing');
             page.classList.remove('printing');
         };
         window.print();

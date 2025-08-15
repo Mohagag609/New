@@ -173,8 +173,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     printBtn.addEventListener('click', () => {
+        document.body.classList.add('is-printing');
         cashboxPage.classList.add('printing');
         window.onafterprint = () => {
+            document.body.classList.remove('is-printing');
             cashboxPage.classList.remove('printing');
         };
         window.print();
