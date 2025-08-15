@@ -1,8 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const page = document.getElementById('page-projects');
-    if (!page) return;
+    try {
+        const page = document.getElementById('page-projects');
+        if (!page) return;
 
-    // --- DOM Elements ---
+        // --- DOM Elements ---
     const addBtn = document.getElementById('add-project-btn');
     const modal = document.getElementById('project-modal');
     const modalTitle = document.getElementById('project-modal-title');
@@ -126,4 +127,8 @@ document.addEventListener('DOMContentLoaded', () => {
             renderProjects();
         }
     });
+    } catch (error) {
+        console.error('Error initializing projects page:', error);
+        alert(`An initialization error occurred on the projects page: ${error.message}`);
+    }
 });
