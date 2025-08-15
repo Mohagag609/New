@@ -20,14 +20,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // 1. Fetch all necessary data in parallel
-            const [vouchers, projectInvestors, allInvestors] = await Promise.all([
+            // 1. Fetch all necessary data for the selected project
+            const [vouchers, projectInvestors] = await Promise.all([
                 settlementDb.settlement_vouchers.where({ projectId }).toArray(),
-                settlementDb.project_investors.where({ projectId }).toArray(),
-                settlementDb.investors.toArray()
+                settlementDb.project_investors.where({ projectId }).toArray()
             ]);
 
-            const investorMap = new Map(allInvestors.map(i => [i.id, i.name]));
+            // 1a. Get all unique investor IDs from both lists and fetch their data
+            const investorIdsFromVouchers = vouchers.map(v => v.paidByInvestorId);
+            const investorIdsFromProject = projectInvestors.map(pi => pi.investorId);
+            const allUniqueInvestorIds = [...new Set([...investorIdsFromVouchers, ...investorIdsFromProject])];
+            const allInvestors = await settlementDb.investors.bulkGet(allUniqueInvestorIds);
+
+            const investorMap = new Map(allInvestors.filter(i => i).map(i => [i.id, i.name]));
 
             // 2. Calculate total expenses for the project
             const totalExpenses = vouchers.reduce((sum, v) => sum + v.amount, 0);

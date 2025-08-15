@@ -54,15 +54,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderVouchers = async () => {
         try {
-            const vouchers = await settlementDb.settlement_vouchers.toArray();
+            const vouchers = await settlementDb.settlement_vouchers.orderBy('id').reverse().toArray();
+            if (vouchers.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4">لا توجد سندات حالياً.</td></tr>`;
+                return;
+            }
+
+            // Gather all unique IDs needed for lookups
+            const projectIds = [...new Set(vouchers.map(v => v.projectId))];
+            const investorIds = [...new Set(vouchers.map(v => v.paidByInvestorId))];
+            const categoryIds = [...new Set(vouchers.map(v => v.categoryId))];
+
+            // Fetch all lookup data in one go
             const [projects, investors, categories] = await Promise.all([
-                settlementDb.projects.toArray(),
-                settlementDb.investors.toArray(),
-                settlementDb.expense_categories.toArray()
+                settlementDb.projects.bulkGet(projectIds),
+                settlementDb.investors.bulkGet(investorIds),
+                settlementDb.expense_categories.bulkGet(categoryIds)
             ]);
-            const projectMap = new Map(projects.map(p => [p.id, p.name]));
-            const investorMap = new Map(investors.map(i => [i.id, i.name]));
-            const categoryMap = new Map(categories.map(c => [c.id, c.name]));
+
+            // Create maps for efficient lookup
+            const projectMap = new Map(projects.filter(p => p).map(p => [p.id, p.name]));
+            const investorMap = new Map(investors.filter(i => i).map(i => [i.id, i.name]));
+            const categoryMap = new Map(categories.filter(c => c).map(c => [c.id, c.name]));
 
             tableBody.innerHTML = '';
             vouchers.forEach(v => {
