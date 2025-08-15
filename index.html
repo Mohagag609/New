@@ -44,6 +44,7 @@
                 <a href="#projects" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">إدارة المشروعات</a>
                 <a href="#investors" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">إدارة المستثمرين</a>
                 <a href="#expense-categories" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">تصنيفات المصروفات</a>
+                <a href="#settlement-ratios" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">إعداد نسب التسوية</a>
                 <a href="#settlement-vouchers" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">إدخال المصروفات</a>
                 <a href="#settlement-reports" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">تقارير التسوية</a>
 
@@ -680,6 +681,25 @@
                     </div>
                 </div>
             </div>
+            <div id="page-settlement-ratios" class="hidden">
+                <h2 class="text-3xl font-bold mb-6">إعداد نسب التسوية للمشروعات</h2>
+                <div class="bg-white p-4 rounded-lg shadow-md mb-6">
+                    <div class="mb-4">
+                        <label for="ratio-project-select" class="block text-sm font-medium text-gray-700 text-right">اختر المشروع لتحديد نسب مستثمريه</label>
+                        <select id="ratio-project-select" class="mt-1 block w-full md:w-1/2 border-gray-300 rounded-md shadow-sm"></select>
+                    </div>
+                </div>
+                <div id="ratios-container" class="hidden bg-white p-4 rounded-lg shadow-md">
+                    <h3 class="text-xl font-bold mb-4">المستثمرون في المشروع: <span id="ratios-project-name" class="text-blue-600"></span></h3>
+                    <div id="ratios-list" class="space-y-2">
+                        <!-- Investor ratio inputs will be rendered here -->
+                    </div>
+                    <div class="mt-4 pt-4 border-t flex justify-between items-center">
+                        <button id="save-ratios-btn" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">حفظ النسب</button>
+                        <div class="text-lg font-bold">الإجمالي: <span id="ratios-total">0.00</span>%</div>
+                    </div>
+                </div>
+            </div>
             <div id="page-settlement-vouchers" class="hidden">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-3xl font-bold">إدخال مصروفات المشروعات</h2>
@@ -854,6 +874,7 @@
     <script src="js/investors.js"></script>
     <script src="js/expense_categories.js"></script>
     <script src="js/settlement_vouchers.js"></script>
+    <script src="js/settlement_ratios.js"></script>
     <script src="js/settlement_reports.js"></script>
     <script src="js/cashboxes.js"></script>
     <script src="js/parties.js"></script>
