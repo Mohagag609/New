@@ -111,8 +111,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 2. Calculate balance before the report's start date
             const priorVouchers = await db.vouchers
-                .where('cashboxId').equals(cashboxId)
-                .and(v => v.date < reportStartDate)
+                .where('[cashboxId+date]')
+                .below([cashboxId, reportStartDate])
                 .toArray();
 
             const netPrior = priorVouchers.reduce((sum, v) => sum + v.debit - v.credit, 0);
