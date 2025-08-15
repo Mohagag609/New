@@ -100,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 periodVouchers = await db.vouchers
                     .where('[cashboxId+date]')
                     .between([cashboxId, fromDate], [cashboxId, toDate])
+                    .and(v => v.projectId === currentProjectId)
                     .toArray();
                 reportStartDate = fromDate;
             } else if (activeTab === 'voucher-range') {

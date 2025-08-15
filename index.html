@@ -40,6 +40,7 @@
                 <a href="#vouchers" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">السندات</a>
                 <a href="#reports" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">التقارير</a>
                 <a href="#projects" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">إدارة المشروعات</a>
+                <a href="#investors" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">المستثمرون</a>
                 <a href="#settings" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">الإعدادات</a>
             </nav>
         </aside>
@@ -61,6 +62,32 @@
                         </div>
                         <div class="self-end">
                              <button id="dash-refresh-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">تحديث</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Project-Investors Linking Modal -->
+                <div id="project-investors-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+                    <div class="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900">إدارة مستثمري المشروع: <span id="proj-inv-modal-title" class="font-bold"></span></h3>
+                        <div class="mt-4">
+                            <form id="link-investor-form" class="flex items-end space-x-2 space-x-reverse">
+                                <div class="flex-grow">
+                                    <label for="investor-select" class="block text-sm font-medium text-gray-700">اختر مستثمر</label>
+                                    <select id="investor-select" class="mt-1 block w-full border-gray-300 rounded-md"></select>
+                                </div>
+                                <div>
+                                    <label for="investor-share" class="block text-sm font-medium text-gray-700">الحصة/المبلغ</label>
+                                    <input type="number" id="investor-share" class="mt-1 block w-full border-gray-300 rounded-md" placeholder="e.g., 10000">
+                                </div>
+                                <button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded">إضافة</button>
+                            </form>
+                        </div>
+                        <div class="mt-4">
+                            <h4 class="font-semibold">المستثمرون الحاليون في المشروع:</h4>
+                            <ul id="project-investors-list" class="mt-2 list-disc pr-5"></ul>
+                        </div>
+                        <div class="mt-6 text-left">
+                            <button id="close-proj-inv-modal-btn" class="bg-gray-500 text-white py-2 px-4 rounded">إغلاق</button>
                         </div>
                     </div>
                 </div>
@@ -540,6 +567,7 @@
                         <tbody id="projects-table-body"></tbody>
                     </table>
                 </div>
+                <!-- Project Add/Edit Modal -->
                 <div id="project-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
                     <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
                         <div class="mt-3 text-center">
@@ -560,6 +588,45 @@
                             </form>
                             <div class="items-center px-4 py-3">
                                 <button id="cancel-project-btn" class="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-700">إلغاء</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="page-investors" class="hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold">إدارة المستثمرين</h2>
+                    <button id="add-investor-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        إضافة مستثمر جديد
+                    </button>
+                </div>
+                <div class="bg-white shadow-md rounded my-6">
+                    <table class="min-w-full leading-normal">
+                        <thead>
+                            <tr>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">اسم المستثمر</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="investors-table-body"></tbody>
+                    </table>
+                </div>
+                <div id="investor-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+                    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                        <div class="mt-3 text-center">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="investor-modal-title">إضافة مستثمر</h3>
+                            <form id="investor-form" class="mt-2 space-y-4">
+                                <input type="hidden" id="investor-id">
+                                <div>
+                                    <label for="investor-name" class="block text-sm font-medium text-gray-700 text-right">اسم المستثمر</label>
+                                    <input type="text" id="investor-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required>
+                                </div>
+                                <div class="items-center px-4 py-3">
+                                    <button type="submit" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-700">حفظ</button>
+                                </div>
+                            </form>
+                            <div class="items-center px-4 py-3">
+                                <button id="cancel-investor-btn" class="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-700">إلغاء</button>
                             </div>
                         </div>
                     </div>
@@ -624,6 +691,7 @@
 
     <script src="js/database.js"></script>
     <script src="js/projects.js"></script>
+    <script src="js/investors.js"></script>
     <script src="js/cashboxes.js"></script>
     <script src="js/parties.js"></script>
     <script src="js/accounts.js"></script>

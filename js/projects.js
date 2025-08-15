@@ -42,7 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 row.innerHTML = `
                     <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">${p.name}</td>
                     <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">${p.description || ''}</td>
-                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm space-x-2 space-x-reverse">
+                        <button class="manage-investors-btn bg-teal-500 hover:bg-teal-700 text-white font-bold py-1 px-2 rounded" data-id="${p.id}">المستثمرون</button>
                         <button class="edit-btn bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded" data-id="${p.id}">تعديل</button>
                         <button class="delete-btn bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded" data-id="${p.id}">حذف</button>
                     </td>
@@ -108,6 +109,99 @@ document.addEventListener('DOMContentLoaded', () => {
     cancelBtn.addEventListener('click', closeModal);
     form.addEventListener('submit', handleFormSubmit);
 
+    // --- Investor Linking Logic ---
+    const projInvModal = document.getElementById('project-investors-modal');
+    const projInvModalTitle = document.getElementById('proj-inv-modal-title');
+    const linkInvestorForm = document.getElementById('link-investor-form');
+    const investorSelect = document.getElementById('investor-select');
+    const investorShareInput = document.getElementById('investor-share');
+    const projInvList = document.getElementById('project-investors-list');
+    const closeProjInvBtn = document.getElementById('close-proj-inv-modal-btn');
+    let currentManagingProjectId = null;
+
+    const openManageInvestorsModal = async (projectId) => {
+        currentManagingProjectId = projectId;
+        const project = await db.projects.get(projectId);
+        if (!project) return;
+
+        projInvModalTitle.textContent = project.name;
+        linkInvestorForm.reset();
+
+        // Populate investor dropdown
+        const allInvestors = await db.investors.toArray();
+        investorSelect.innerHTML = '<option value="">اختر مستثمراً...</option>';
+        allInvestors.forEach(inv => {
+            const option = document.createElement('option');
+            option.value = inv.id;
+            option.textContent = inv.name;
+            investorSelect.appendChild(option);
+        });
+
+        await renderLinkedInvestors(projectId);
+        projInvModal.classList.remove('hidden');
+    };
+
+    const renderLinkedInvestors = async (projectId) => {
+        const links = await db.project_investors.where({ projectId }).toArray();
+        const investorIds = links.map(l => l.investorId);
+        const investors = await db.investors.bulkGet(investorIds);
+        const investorMap = new Map(investors.map(i => [i.id, i.name]));
+
+        projInvList.innerHTML = '';
+        links.forEach(link => {
+            const li = document.createElement('li');
+            li.className = 'flex justify-between items-center p-1';
+            li.innerHTML = `
+                <span>${investorMap.get(link.investorId) || 'مستثمر غير معروف'} (الحصة: ${link.share || 'N/A'})</span>
+                <button class="remove-investor-link-btn text-red-500 hover:text-red-700" data-link-id="${link.id}">إزالة</button>
+            `;
+            projInvList.appendChild(li);
+        });
+    };
+
+    const handleLinkInvestor = async (e) => {
+        e.preventDefault();
+        const investorId = Number(investorSelect.value);
+        const share = Number(investorShareInput.value);
+        if (!investorId || !currentManagingProjectId) return;
+
+        try {
+            await db.project_investors.add({
+                projectId: currentManagingProjectId,
+                investorId: investorId,
+                share: share
+            });
+            await renderLinkedInvestors(currentManagingProjectId);
+            linkInvestorForm.reset();
+        } catch (error) {
+            console.error("Failed to link investor:", error);
+            if (error.name === 'ConstraintError') {
+                alert('هذا المستثمر مرتبط بالفعل بهذا المشروع.');
+            } else {
+                alert('فشل ربط المستثمر.');
+            }
+        }
+    };
+
+    const handleRemoveLink = async (linkId) => {
+        if (!confirm('هل أنت متأكد من إزالة هذا المستثمر من المشروع؟')) return;
+        try {
+            await db.project_investors.delete(linkId);
+            await renderLinkedInvestors(currentManagingProjectId);
+        } catch (error) {
+            console.error('Failed to remove investor link:', error);
+        }
+    };
+
+    closeProjInvBtn.addEventListener('click', () => projInvModal.classList.add('hidden'));
+    linkInvestorForm.addEventListener('submit', handleLinkInvestor);
+    projInvList.addEventListener('click', (e) => {
+        if (e.target.classList.contains('remove-investor-link-btn')) {
+            handleRemoveLink(Number(e.target.dataset.linkId));
+        }
+    });
+
+
     tableBody.addEventListener('click', async (event) => {
         const target = event.target;
         const id = Number(target.dataset.id);
@@ -115,10 +209,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (target.classList.contains('edit-btn')) {
             const project = await db.projects.get(id);
             if (project) openModal(project);
-        }
-
-        if (target.classList.contains('delete-btn')) {
+        } else if (target.classList.contains('delete-btn')) {
             handleDelete(id);
+        } else if (target.classList.contains('manage-investors-btn')) {
+            openManageInvestorsModal(id);
         }
     });
 

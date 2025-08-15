@@ -164,8 +164,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const [cashboxes, parties] = await Promise.all([
-                db.cashboxes.toArray(),
-                db.parties.toArray()
+                db.cashboxes.where({ projectId: currentProjectId }).toArray(),
+                db.parties.where({ projectId: currentProjectId }).toArray()
             ]);
             const vouchers = allVouchers;
 

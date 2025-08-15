@@ -13,7 +13,7 @@ db.version(1).stores({
 db.version(2).stores({
     projects: '++id, &name', // New table for projects
     investors: '++id, &name', // New table for investors
-    project_investors: '++id, projectId, investorId', // Link table for M-M relationship
+    project_investors: '++id, &[projectId+investorId], projectId, investorId', // Link table for M-M relationship
 
     // Update existing tables with projectId
     cashboxes: '++id, &name, projectId',
