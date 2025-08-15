@@ -23,6 +23,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let reportData = []; // To hold the data for CSV export
     let activeTab = 'date'; // Default active tab
 
+    const formatCurrency = (amount) => {
+        const currency = localStorage.getItem('currency') || 'EGP';
+        return new Intl.NumberFormat('ar-SA', { style: 'currency', currency: currency }).format(amount);
+    };
+
     const parseVoucherNo = (voucherNo) => {
         if (typeof voucherNo === 'number') return voucherNo;
         if (!voucherNo) return 0;
