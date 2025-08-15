@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const openingBalanceRow = {
                 date: reportStartDate,
                 voucherNo: '-',
-                description: 'رصيد افتتاحي / سابق',
+                description: 'رصيد ما سبق',
                 debit: '',
                 credit: '',
                 balance: openingBalance
@@ -147,6 +147,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     </tr>
                 `;
             });
+
+            // Add summary footer row
+            const table = tableBody.parentElement; // Get the <table> element
+            let tfoot = table.querySelector('tfoot');
+            if (tfoot) tfoot.remove(); // Remove old footer if it exists
+
+            tfoot = document.createElement('tfoot');
+            const footerText = runningBalance >= 0
+                ? `الخزينة الآن بها مبلغ: ${formatCurrency(runningBalance)}`
+                : `الخزينة الآن عليها مبلغ: ${formatCurrency(runningBalance)}`;
+
+            tfoot.innerHTML = `
+                <tr class="bg-gray-200 font-bold text-lg">
+                    <td colspan="6" class="px-5 py-4 text-center">${footerText}</td>
+                </tr>
+            `;
+            table.appendChild(tfoot);
 
             resultsDiv.classList.remove('hidden');
 
