@@ -23,6 +23,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let reportData = []; // To hold the data for CSV export
     let activeTab = 'date'; // Default active tab
 
+    const parseVoucherNo = (voucherNo) => {
+        if (typeof voucherNo === 'number') return voucherNo;
+        if (!voucherNo) return 0;
+        if (typeof voucherNo === 'string' && voucherNo.includes('-')) {
+            return parseInt(voucherNo.split('-')[1], 10) || 0;
+        }
+        const num = parseInt(voucherNo, 10);
+        return isNaN(num) ? 0 : num;
+    };
+
     const initializePage = async () => {
         const cashboxes = await db.cashboxes.toArray();
         cashboxSelect.innerHTML = '<option value="">اختر خزنة...</option>';
@@ -89,8 +99,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const allCashboxVouchers = await db.vouchers.where('cashboxId').equals(cashboxId).toArray();
                 periodVouchers = allCashboxVouchers
-                    .filter(v => v.voucherNo >= fromVoucher && v.voucherNo <= toVoucher)
-                    .sort((a,b) => a.voucherNo - b.voucherNo);
+                    .filter(v => {
+                        const num = parseVoucherNo(v.voucherNo);
+                        return num >= fromVoucher && num <= toVoucher;
+                    })
+                    .sort((a, b) => parseVoucherNo(a.voucherNo) - parseVoucherNo(b.voucherNo));
 
                 if (periodVouchers.length === 0) return alert('لم يتم العثور على سندات في هذا النطاق.');
                 reportStartDate = periodVouchers[0].date;
