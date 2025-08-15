@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const ratiosProjectName = document.getElementById('ratios-project-name');
     const ratiosList = document.getElementById('ratios-list');
     const ratiosTotalSpan = document.getElementById('ratios-total');
+    const addInvestorForm = document.getElementById('add-investor-to-ratio-form');
+    const addInvestorSelect = document.getElementById('add-investor-select');
     const saveBtn = document.getElementById('save-ratios-btn');
 
     let currentProjectLinks = [];
@@ -36,9 +38,22 @@ document.addEventListener('DOMContentLoaded', () => {
         ratiosProjectName.textContent = project.name;
 
         currentProjectLinks = await settlementDb.project_investors.where({ projectId }).toArray();
-        const investorIds = currentProjectLinks.map(l => l.investorId);
-        const investors = await settlementDb.investors.bulkGet(investorIds);
-        const investorMap = new Map(investors.map(i => [i.id, i.name]));
+        const linkedInvestorIds = new Set(currentProjectLinks.map(l => l.investorId));
+
+        const allInvestors = await settlementDb.investors.toArray();
+        const linkedInvestors = allInvestors.filter(i => linkedInvestorIds.has(i.id));
+        const unlinkedInvestors = allInvestors.filter(i => !linkedInvestorIds.has(i.id));
+
+        const investorMap = new Map(linkedInvestors.map(i => [i.id, i.name]));
+
+        // Populate the "Add Investor" dropdown
+        addInvestorSelect.innerHTML = '<option value="">اختر مستثمراً لإضافته...</option>';
+        unlinkedInvestors.forEach(inv => {
+            const option = document.createElement('option');
+            option.value = inv.id;
+            option.textContent = inv.name;
+            addInvestorSelect.appendChild(option);
+        });
 
         ratiosList.innerHTML = '';
         currentProjectLinks.forEach(link => {
@@ -95,8 +110,37 @@ document.addEventListener('DOMContentLoaded', () => {
         ratiosContainer.classList.add('hidden');
     };
 
+    const handleAddInvestorToProject = async (e) => {
+        e.preventDefault();
+        const projectId = Number(projectSelect.value);
+        const investorId = Number(addInvestorSelect.value);
+
+        if (!projectId || !investorId) {
+            alert('الرجاء اختيار مشروع ومستثمر.');
+            return;
+        }
+
+        try {
+            await settlementDb.project_investors.add({
+                projectId: projectId,
+                investorId: investorId,
+                share: 0 // Default share
+            });
+            // Refresh the entire view
+            handleProjectSelect();
+        } catch (error) {
+            console.error('Failed to add investor to project:', error);
+            if (error.name === 'ConstraintError') {
+                alert('هذا المستثمر مرتبط بالفعل بهذا المشروع.');
+            } else {
+                alert('فشل إضافة المستثمر للمشروع.');
+            }
+        }
+    };
+
     // --- Event Listeners ---
     projectSelect.addEventListener('change', handleProjectSelect);
+    addInvestorForm.addEventListener('submit', handleAddInvestorToProject);
     saveBtn.addEventListener('click', handleSaveRatios);
     ratiosList.addEventListener('input', updateTotal);
 
