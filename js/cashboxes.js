@@ -2,6 +2,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const cashboxPage = document.getElementById('page-cashboxes');
     if (!cashboxPage) return;
 
+    const currentProjectId = Number(localStorage.getItem('currentProjectId'));
+    if (!currentProjectId) {
+        // Hide the 'Add' button if no project is selected
+        document.getElementById('add-cashbox-btn').style.display = 'none';
+        return; // Don't initialize the page if no project is active
+    }
+
     const addCashboxBtn = document.getElementById('add-cashbox-btn');
     const printBtn = document.getElementById('print-cashboxes-btn');
     const modal = document.getElementById('cashbox-modal');
@@ -44,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const populateParentCashboxSelect = async () => {
         try {
-            const mainCashboxes = await db.cashboxes.where('type').equals('Main').toArray();
+            const mainCashboxes = await db.cashboxes.where({ type: 'Main', projectId: currentProjectId }).toArray();
             parentCashboxSelect.innerHTML = '<option value="">اختر الخزنة الرئيسية</option>';
             mainCashboxes.forEach(cb => {
                 const option = document.createElement('option');
@@ -59,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderCashboxes = async () => {
         try {
-            const allCashboxes = await db.cashboxes.toArray();
+            const allCashboxes = await db.cashboxes.where({ projectId: currentProjectId }).toArray();
             const cashboxNameMap = allCashboxes.reduce((map, cb) => {
                 map[cb.id] = cb.name;
                 return map;
@@ -101,6 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
             openingBalance: Number(openingBalanceInput.value),
             parentId: cashboxTypeSelect.value === 'Sub' ? Number(parentCashboxSelect.value) : null,
             isActive: true, // Default to active on creation
+            projectId: currentProjectId
         };
 
         if (cashboxData.type === 'Sub' && !cashboxData.parentId) {

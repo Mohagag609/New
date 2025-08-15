@@ -2,6 +2,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const page = document.getElementById('page-reports');
     if (!page) return;
 
+    const currentProjectId = Number(localStorage.getItem('currentProjectId'));
+    if (!currentProjectId) {
+        // Hide the generate button if no project is selected
+        document.getElementById('generate-report-btn').style.display = 'none';
+        return;
+    }
+
     // --- DOM Elements ---
     const cashboxSelect = document.getElementById('report-cashbox');
     const reportTabs = document.getElementById('report-tabs');
@@ -39,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const initializePage = async () => {
-        const cashboxes = await db.cashboxes.toArray();
+        const cashboxes = await db.cashboxes.where({ projectId: currentProjectId }).toArray();
         cashboxSelect.innerHTML = '<option value="">اختر خزنة...</option>';
         cashboxes.forEach(c => {
             if(c.isActive) {
@@ -79,8 +86,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const voucherNo = Number(voucherNoInput.value.trim());
                 if (!voucherNo || isNaN(voucherNo)) return alert('الرجاء إدخال رقم سند صالح.');
 
-                const voucher = await db.vouchers.where('voucherNo').equals(voucherNo).first();
-                if (!voucher) return alert('لم يتم العثور على سند بهذا الرقم.');
+                const voucher = await db.vouchers.where({ voucherNo: voucherNo, projectId: currentProjectId }).first();
+                if (!voucher) return alert('لم يتم العثور على سند بهذا الرقم في المشروع الحالي.');
                 if (voucher.cashboxId !== cashboxId) return alert('هذا السند لا يخص الخزنة المحددة.');
 
                 periodVouchers = [voucher];
@@ -102,8 +109,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     return alert('الرجاء إدخال نطاق أرقام سندات صالح.');
                 }
 
-                const allCashboxVouchers = await db.vouchers.where('cashboxId').equals(cashboxId).toArray();
-                periodVouchers = allCashboxVouchers
+                const allProjectVouchers = await db.vouchers.where({ projectId: currentProjectId, cashboxId: cashboxId }).toArray();
+                periodVouchers = allProjectVouchers
                     .filter(v => {
                         const num = parseVoucherNo(v.voucherNo);
                         return num >= fromVoucher && num <= toVoucher;
@@ -115,9 +122,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // 2. Calculate balance before the report's start date
-            const priorVouchers = await db.vouchers
-                .where('[cashboxId+date]')
-                .below([cashboxId, reportStartDate])
+            const priorVouchers = await db.vouchers.where({ projectId: currentProjectId })
+                .and(v => v.cashboxId === cashboxId && v.date < reportStartDate)
                 .toArray();
 
             const netPrior = priorVouchers.reduce((sum, v) => sum + v.debit - v.credit, 0);

@@ -1,7 +1,50 @@
 // Main application logic will go here
 console.log("main.js loaded");
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    const projectSelector = document.getElementById('global-project-selector');
+
+    async function populateProjectSelector() {
+        try {
+            const projects = await db.projects.toArray();
+            if (projects.length === 0) {
+                projectSelector.innerHTML = '<option>لا توجد مشروعات</option>';
+                projectSelector.disabled = true;
+                // Maybe prompt user to create a project
+                return;
+            }
+
+            projectSelector.innerHTML = '';
+            projects.forEach(p => {
+                const option = document.createElement('option');
+                option.value = p.id;
+                option.textContent = p.name;
+                projectSelector.appendChild(option);
+            });
+
+            let currentProjectId = localStorage.getItem('currentProjectId');
+            if (currentProjectId && projects.some(p => p.id == currentProjectId)) {
+                projectSelector.value = currentProjectId;
+            } else {
+                currentProjectId = projects[0].id;
+                localStorage.setItem('currentProjectId', currentProjectId);
+            }
+        } catch (error) {
+            console.error("Failed to populate project selector:", error);
+        }
+    }
+
+    projectSelector.addEventListener('change', () => {
+        const newProjectId = projectSelector.value;
+        localStorage.setItem('currentProjectId', newProjectId);
+        // Reload the app to apply the new project context everywhere
+        window.location.reload();
+    });
+
+    // Populate the selector once the DB is open and ready
+    await db.open();
+    await populateProjectSelector();
+
     const mainContent = document.getElementById('main-content');
     const navLinks = document.querySelectorAll('#main-nav a');
     const pages = mainContent.querySelectorAll('div[id^="page-"]');

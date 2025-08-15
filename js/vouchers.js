@@ -2,6 +2,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const page = document.getElementById('page-vouchers');
     if (!page) return;
 
+    const currentProjectId = Number(localStorage.getItem('currentProjectId'));
+    if (!currentProjectId) {
+        // Hide action buttons if no project is selected
+        document.getElementById('new-receipt-btn').style.display = 'none';
+        document.getElementById('new-payment-btn').style.display = 'none';
+        document.getElementById('new-transfer-btn').style.display = 'none';
+        return;
+    }
+
     // --- DOM Elements ---
     const newReceiptBtn = document.getElementById('new-receipt-btn');
     const newPaymentBtn = document.getElementById('new-payment-btn');
@@ -57,15 +66,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const populateAllDropdowns = () => {
-        populateSelect(cashboxSelect, () => db.cashboxes.toArray(), 'اختر الخزنة');
-        populateSelect(fromCashboxSelect, () => db.cashboxes.toArray(), 'اختر الخزنة');
-        populateSelect(toCashboxSelect, () => db.cashboxes.toArray(), 'اختر الخزنة');
-        populateSelect(partySelect, () => db.parties.toArray(), 'اختر الطرف (اختياري)');
-        // Accounts need to be filtered by type based on mode
+        const query = { projectId: currentProjectId };
+        populateSelect(cashboxSelect, () => db.cashboxes.where(query).toArray(), 'اختر الخزنة');
+        populateSelect(fromCashboxSelect, () => db.cashboxes.where(query).toArray(), 'اختر الخزنة');
+        populateSelect(toCashboxSelect, () => db.cashboxes.where(query).toArray(), 'اختر الخزنة');
+        populateSelect(partySelect, () => db.parties.where(query).toArray(), 'اختر الطرف (اختياري)');
     };
 
     const populateAccountsDropdown = async (type) => {
-        await populateSelect(accountSelect, () => db.accounts.where('type').equals(type).toArray(), 'اختر الحساب');
+        await populateSelect(accountSelect, () => db.accounts.where({ type: type, projectId: currentProjectId }).toArray(), 'اختر الحساب');
     };
 
 
@@ -148,7 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Main Render Function ---
     const renderVouchers = async (filters = {}) => {
         try {
-            let allVouchers = await db.vouchers.orderBy('id').reverse().toArray();
+            let allVouchers = await db.vouchers.where({ projectId: currentProjectId }).reverse().toArray();
 
             if (filters.fromDate && filters.toDate) {
                 allVouchers = allVouchers.filter(v => v.date >= filters.fromDate && v.date <= filters.toDate);
@@ -245,6 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             movementType: 'TransferOut',
                             description: `تحويل إلى ${toCashboxText}. ${descriptionInput.value}`,
                             debit: 0, credit: amount, transferId, createdAt: now, updatedAt: now,
+                            projectId: currentProjectId
                         },
                         {
                             voucherNo: voucherNoIn,
@@ -253,6 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             movementType: 'TransferIn',
                             description: `تحويل من ${fromCashboxText}. ${descriptionInput.value}`,
                             debit: amount, credit: 0, transferId, createdAt: now, updatedAt: now,
+                            projectId: currentProjectId
                         }
                     ]);
                 });
@@ -270,6 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     credit: Number(creditInput.value),
                     createdAt: now,
                     updatedAt: now,
+                    projectId: currentProjectId
                 };
 
                 if (!voucherData.cashboxId) return alert('الرجاء اختيار خزنة.');

@@ -25,9 +25,13 @@
 <body class="bg-gray-100">
     <div id="app" class="flex h-screen bg-gray-200 font-sans">
         <!-- Sidebar -->
-        <aside id="sidebar" class="w-64 bg-gray-800 text-white p-4">
-            <h1 class="text-2xl font-bold mb-6 text-center border-b border-gray-700 pb-4">نظام الخزينة</h1>
-            <nav id="main-nav">
+        <aside id="sidebar" class="w-64 bg-gray-800 text-white p-4 flex flex-col">
+            <h1 class="text-2xl font-bold mb-2 text-center border-b border-gray-700 pb-2">نظام الخزينة</h1>
+            <div class="p-2">
+                <label for="global-project-selector" class="text-sm font-semibold mb-1 block">المشروع الحالي:</label>
+                <select id="global-project-selector" class="w-full p-1 rounded bg-gray-700 text-white border border-gray-600"></select>
+            </div>
+            <nav id="main-nav" class="mt-4 flex-grow">
                 <!-- Navigation links will be dynamically generated or hardcoded here -->
                 <a href="#dashboard" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700 bg-gray-700">لوحة التحكم</a>
                 <a href="#cashboxes" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">الخزن</a>
@@ -35,6 +39,7 @@
                 <a href="#accounts" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">أنواع الحسابات</a>
                 <a href="#vouchers" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">السندات</a>
                 <a href="#reports" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">التقارير</a>
+                <a href="#projects" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">إدارة المشروعات</a>
                 <a href="#settings" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">الإعدادات</a>
             </nav>
         </aside>
@@ -516,6 +521,50 @@
                     </div>
                 </div>
             </div>
+            <div id="page-projects" class="hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold">إدارة المشروعات</h2>
+                    <button id="add-project-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        إضافة مشروع جديد
+                    </button>
+                </div>
+                <div class="bg-white shadow-md rounded my-6">
+                    <table class="min-w-full leading-normal">
+                        <thead>
+                            <tr>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">اسم المشروع</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">الوصف</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="projects-table-body"></tbody>
+                    </table>
+                </div>
+                <div id="project-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+                    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                        <div class="mt-3 text-center">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="project-modal-title">إضافة مشروع</h3>
+                            <form id="project-form" class="mt-2 space-y-4">
+                                <input type="hidden" id="project-id">
+                                <div>
+                                    <label for="project-name" class="block text-sm font-medium text-gray-700 text-right">اسم المشروع</label>
+                                    <input type="text" id="project-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required>
+                                </div>
+                                <div>
+                                    <label for="project-description" class="block text-sm font-medium text-gray-700 text-right">الوصف</label>
+                                    <textarea id="project-description" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"></textarea>
+                                </div>
+                                <div class="items-center px-4 py-3">
+                                    <button type="submit" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-700">حفظ</button>
+                                </div>
+                            </form>
+                            <div class="items-center px-4 py-3">
+                                <button id="cancel-project-btn" class="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-700">إلغاء</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div id="page-settings" class="hidden">
                 <h2 class="text-3xl font-bold mb-6">الإعدادات</h2>
 
@@ -574,6 +623,7 @@
     </div>
 
     <script src="js/database.js"></script>
+    <script src="js/projects.js"></script>
     <script src="js/cashboxes.js"></script>
     <script src="js/parties.js"></script>
     <script src="js/accounts.js"></script>

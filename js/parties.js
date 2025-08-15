@@ -2,6 +2,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const page = document.getElementById('page-parties');
     if (!page) return;
 
+    const currentProjectId = Number(localStorage.getItem('currentProjectId'));
+    if (!currentProjectId) {
+        document.getElementById('add-party-btn').style.display = 'none';
+        return;
+    }
+
     const addBtn = document.getElementById('add-party-btn');
     const printBtn = document.getElementById('print-parties-btn');
     const modal = document.getElementById('party-modal');
@@ -38,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderParties = async () => {
         try {
-            const parties = await db.parties.toArray();
+            const parties = await db.parties.where({ projectId: currentProjectId }).toArray();
             tableBody.innerHTML = '';
             parties.forEach(party => {
                 const row = document.createElement('tr');
@@ -74,6 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
             type: typeInput.value,
             phone: phoneInput.value.trim(),
             notes: notesInput.value.trim(),
+            projectId: currentProjectId
         };
 
         try {

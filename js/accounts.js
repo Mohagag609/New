@@ -2,6 +2,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const page = document.getElementById('page-accounts');
     if (!page) return;
 
+    const currentProjectId = Number(localStorage.getItem('currentProjectId'));
+    if (!currentProjectId) {
+        document.getElementById('add-account-btn').style.display = 'none';
+        return;
+    }
+
     const addBtn = document.getElementById('add-account-btn');
     const printBtn = document.getElementById('print-accounts-btn');
     const modal = document.getElementById('account-modal');
@@ -34,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderAccounts = async () => {
         try {
-            const accounts = await db.accounts.toArray();
+            const accounts = await db.accounts.where({ projectId: currentProjectId }).toArray();
             tableBody.innerHTML = '';
             accounts.forEach(account => {
                 const row = document.createElement('tr');
@@ -67,6 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const accountData = {
             name: nameInput.value.trim(),
             type: typeInput.value,
+            projectId: currentProjectId
         };
 
         try {

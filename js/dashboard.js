@@ -2,6 +2,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const page = document.getElementById('page-dashboard');
     if (!page) return;
 
+    const currentProjectId = Number(localStorage.getItem('currentProjectId'));
+    if (!currentProjectId) {
+        // You can show a message or hide the content if no project is selected
+        page.innerHTML = '<p class="text-center text-gray-500">الرجاء اختيار مشروع من القائمة الجانبية لعرض لوحة التحكم.</p>';
+        return;
+    }
+
     // --- DOM Elements ---
     const fromDateInput = document.getElementById('dash-from-date');
     const toDateInput = document.getElementById('dash-to-date');
@@ -29,8 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // --- Calculate Total Balance ---
             const [allCashboxes, allVouchers] = await Promise.all([
-                db.cashboxes.toArray(),
-                db.vouchers.toArray()
+                db.cashboxes.where({ projectId: currentProjectId }).toArray(),
+                db.vouchers.where({ projectId: currentProjectId }).toArray()
             ]);
 
             const totalOpeningBalance = allCashboxes.reduce((sum, cb) => sum + cb.openingBalance, 0);
