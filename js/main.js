@@ -6,7 +6,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function populateProjectSelector() {
         try {
-            const projects = await db.projects.toArray();
+            // Use the new settlementDb
+            const projects = await settlementDb.projects.toArray();
             if (projects.length === 0) {
                 projectSelector.innerHTML = '<option>لا توجد مشروعات</option>';
                 projectSelector.disabled = true;
