@@ -32,16 +32,25 @@
                 <select id="global-project-selector" class="w-full p-1 rounded bg-gray-700 text-white border border-gray-600"></select>
             </div>
             <nav id="main-nav" class="mt-4 flex-grow">
-                <!-- Navigation links will be dynamically generated or hardcoded here -->
+                <div class="px-4 py-2 text-xs font-semibold text-gray-400 uppercase">نظام الخزينة</div>
                 <a href="#dashboard" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700 bg-gray-700">لوحة التحكم</a>
                 <a href="#cashboxes" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">الخزن</a>
                 <a href="#parties" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">العملاء والموردين</a>
                 <a href="#accounts" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">أنواع الحسابات</a>
-                <a href="#vouchers" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">السندات</a>
-                <a href="#reports" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">التقارير</a>
+                <a href="#vouchers" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">السندات (الخزينة)</a>
+                <a href="#reports" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">تقارير الخزينة</a>
+
+                <div class="mt-4 px-4 py-2 text-xs font-semibold text-gray-400 uppercase">نظام تسوية المشروعات</div>
                 <a href="#projects" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">إدارة المشروعات</a>
-                <a href="#investors" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">المستثمرون</a>
-                <a href="#settings" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">الإعدادات</a>
+                <a href="#investors" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">إدارة المستثمرين</a>
+                <a href="#expense-categories" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">تصنيفات المصروفات</a>
+                <a href="#settlement-vouchers" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">إدخال المصروفات</a>
+                <a href="#settlement-reports" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">تقارير التسوية</a>
+
+                <div class="mt-auto">
+                    <div class="px-4 py-2 text-xs font-semibold text-gray-400 uppercase">الإعدادات العامة</div>
+                     <a href="#settings" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">الإعدادات</a>
+                </div>
             </nav>
         </aside>
 
@@ -632,6 +641,156 @@
                     </div>
                 </div>
             </div>
+            <div id="page-expense-categories" class="hidden">
+                 <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold">تصنيفات المصروفات</h2>
+                    <button id="add-exp-category-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        إضافة تصنيف جديد
+                    </button>
+                </div>
+                <div class="bg-white shadow-md rounded my-6">
+                    <table class="min-w-full leading-normal">
+                        <thead>
+                            <tr>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">اسم التصنيف</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="exp-categories-table-body"></tbody>
+                    </table>
+                </div>
+                <div id="exp-category-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+                    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                        <div class="mt-3 text-center">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="exp-category-modal-title">إضافة تصنيف مصروف</h3>
+                            <form id="exp-category-form" class="mt-2 space-y-4">
+                                <input type="hidden" id="exp-category-id">
+                                <div>
+                                    <label for="exp-category-name" class="block text-sm font-medium text-gray-700 text-right">اسم التصنيف</label>
+                                    <input type="text" id="exp-category-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required>
+                                </div>
+                                <div class="items-center px-4 py-3">
+                                    <button type="submit" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-700">حفظ</button>
+                                </div>
+                            </form>
+                            <div class="items-center px-4 py-3">
+                                <button id="cancel-exp-category-btn" class="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-700">إلغاء</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="page-settlement-vouchers" class="hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold">إدخال مصروفات المشروعات</h2>
+                    <button id="add-settlement-voucher-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        + سند صرف جديد
+                    </button>
+                </div>
+                <div class="bg-white shadow-md rounded my-6">
+                    <table class="min-w-full leading-normal">
+                        <thead>
+                            <tr>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">المشروع</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">التاريخ</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">المدفوع بواسطة</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">التصنيف</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">المبلغ</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="settlement-vouchers-table-body"></tbody>
+                    </table>
+                </div>
+                <div id="settlement-voucher-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+                    <div class="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
+                         <h3 class="text-lg leading-6 font-medium text-gray-900" id="settlement-voucher-modal-title">إضافة سند صرف</h3>
+                         <form id="settlement-voucher-form" class="mt-4 space-y-4">
+                            <input type="hidden" id="settlement-voucher-id">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="sv-project-select">المشروع</label>
+                                    <select id="sv-project-select" class="mt-1 block w-full border-gray-300 rounded-md" required></select>
+                                </div>
+                                <div>
+                                    <label for="sv-date">التاريخ</label>
+                                    <input type="date" id="sv-date" class="mt-1 block w-full border-gray-300 rounded-md" required>
+                                </div>
+                                <div>
+                                    <label for="sv-investor-select">المدفوع بواسطة (المستثمر)</label>
+                                    <select id="sv-investor-select" class="mt-1 block w-full border-gray-300 rounded-md" required></select>
+                                </div>
+                                <div>
+                                    <label for="sv-category-select">التصنيف</label>
+                                    <select id="sv-category-select" class="mt-1 block w-full border-gray-300 rounded-md" required></select>
+                                </div>
+                                <div>
+                                    <label for="sv-amount">المبلغ</label>
+                                    <input type="number" id="sv-amount" min="0.01" step="0.01" class="mt-1 block w-full border-gray-300 rounded-md" required>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="sv-notes">ملاحظات</label>
+                                <textarea id="sv-notes" rows="2" class="mt-1 block w-full border-gray-300 rounded-md"></textarea>
+                            </div>
+                            <div class="flex justify-end space-x-2 space-x-reverse pt-4">
+                                <button type="button" id="cancel-sv-btn" class="bg-gray-500 text-white py-2 px-4 rounded">إلغاء</button>
+                                <button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded">حفظ</button>
+                            </div>
+                         </form>
+                    </div>
+                </div>
+            </div>
+             <div id="page-settlement-reports" class="hidden">
+                <h2 class="text-3xl font-bold mb-6">تقارير تسوية المشروعات</h2>
+
+                <div class="bg-white p-4 rounded-lg shadow-md mb-6 no-print">
+                    <label for="settlement-report-project-select" class="block text-sm font-medium text-gray-700 text-right">اختر المشروع لعرض تقاريره</label>
+                    <select id="settlement-report-project-select" class="mt-1 block w-full md:w-1/2 border-gray-300 rounded-md shadow-sm"></select>
+                </div>
+
+                <div id="settlement-report-content" class="hidden space-y-8">
+                    <!-- Investor Expenses Report Section -->
+                    <div>
+                        <h3 class="text-2xl font-bold mb-4">تقرير مدفوعات المستثمرين</h3>
+                        <div class="bg-white shadow-md rounded">
+                            <table class="min-w-full leading-normal">
+                                <thead>
+                                    <tr>
+                                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">المستثمر</th>
+                                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">إجمالي المدفوع</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="investor-expenses-report-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Final Settlement Section -->
+                    <div>
+                        <h3 class="text-2xl font-bold mb-4">شاشة التسوية النهائية</h3>
+                        <div class="bg-white shadow-md rounded p-4">
+                            <p class="mb-4"><strong>إجمالي مصروفات المشروع:</strong> <span id="settlement-total-expenses" class="font-bold"></span></p>
+                            <table class="min-w-full leading-normal">
+                                <thead>
+                                    <tr>
+                                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold">المستثمر</th>
+                                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold">نسبة التسوية</th>
+                                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold">الحصة العادلة</th>
+                                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold">المدفوع الفعلي</th>
+                                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold">الرصيد النهائي</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="final-settlement-report-body"></tbody>
+                            </table>
+                            <div class="mt-6">
+                                <h4 class="text-xl font-bold">خطة التسوية المقترحة:</h4>
+                                <ul id="settlement-plan-list" class="mt-2 list-disc pr-5"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div id="page-settings" class="hidden">
                 <h2 class="text-3xl font-bold mb-6">الإعدادات</h2>
 
@@ -690,8 +849,12 @@
     </div>
 
     <script src="js/database.js"></script>
+    <script src="js/settlement-database.js"></script>
     <script src="js/projects.js"></script>
     <script src="js/investors.js"></script>
+    <script src="js/expense_categories.js"></script>
+    <script src="js/settlement_vouchers.js"></script>
+    <script src="js/settlement_reports.js"></script>
     <script src="js/cashboxes.js"></script>
     <script src="js/parties.js"></script>
     <script src="js/accounts.js"></script>
