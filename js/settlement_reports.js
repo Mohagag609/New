@@ -58,14 +58,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 5. Calculate Final Settlement
             const settlementData = [];
+            const totalShares = projectInvestors.reduce((sum, pi) => sum + (pi.share || 0), 0);
+            const useEqualSplit = (totalShares < 0.99 || totalShares > 1.01);
+
+            if(useEqualSplit && projectInvestors.length > 0) {
+                console.log("Using default equal split for settlement.");
+            }
+
             projectInvestors.forEach(pi => {
+                const settlementRatio = useEqualSplit
+                    ? (1 / projectInvestors.length)
+                    : (pi.share || 0);
+
                 const paid = paidByInvestor.get(pi.investorId) || 0;
-                const fairShare = totalExpenses * (pi.share || 0); // Assuming share is a ratio e.g., 0.5
+                const fairShare = totalExpenses * settlementRatio;
                 const balance = paid - fairShare;
+
                 settlementData.push({
                     investorId: pi.investorId,
                     investorName: investorMap.get(pi.investorId),
-                    settlementRatio: `${((pi.share || 0) * 100).toFixed(2)}%`,
+                    settlementRatio: `${(settlementRatio * 100).toFixed(2)}%`,
                     fairShare: fairShare,
                     paid: paid,
                     balance: balance
