@@ -692,10 +692,17 @@
                 <div id="ratios-container" class="hidden bg-white p-4 rounded-lg shadow-md">
                     <h3 class="text-xl font-bold mb-4">المستثمرون في المشروع: <span id="ratios-project-name" class="text-blue-600"></span></h3>
 
-                    <form id="add-investor-to-ratio-form" class="p-4 mb-4 border-b">
-                        <label for="add-investor-select" class="block text-sm font-medium text-gray-700">إضافة مستثمر إلى قائمة النسب</label>
-                        <div class="flex items-center space-x-2 space-x-reverse mt-1">
-                            <select id="add-investor-select" class="flex-grow mt-1 block w-full border-gray-300 rounded-md"></select>
+                    <form id="add-investor-to-ratio-form" class="p-4 mb-4 border-b space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">إضافة مستثمر إلى قائمة النسب</label>
+                        <div class="flex items-end space-x-2 space-x-reverse">
+                            <div class="flex-grow">
+                                <label for="add-investor-select" class="text-xs">المستثمر</label>
+                                <select id="add-investor-select" class="mt-1 block w-full border-gray-300 rounded-md"></select>
+                            </div>
+                            <div class="w-24">
+                                 <label for="add-investor-share-input" class="text-xs">النسبة (%)</label>
+                                <input type="number" id="add-investor-share-input" class="mt-1 block w-full border-gray-300 rounded-md" placeholder="e.g., 50">
+                            </div>
                             <button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded">إضافة</button>
                         </div>
                     </form>

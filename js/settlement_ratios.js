@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const ratiosTotalSpan = document.getElementById('ratios-total');
     const addInvestorForm = document.getElementById('add-investor-to-ratio-form');
     const addInvestorSelect = document.getElementById('add-investor-select');
+    const addInvestorShareInput = document.getElementById('add-investor-share-input');
     const saveBtn = document.getElementById('save-ratios-btn');
 
     let currentProjectLinks = [];
@@ -114,6 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const projectId = Number(projectSelect.value);
         const investorId = Number(addInvestorSelect.value);
+        const sharePercent = Number(addInvestorShareInput.value) || 0;
 
         if (!projectId || !investorId) {
             alert('الرجاء اختيار مشروع ومستثمر.');
@@ -124,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await settlementDb.project_investors.add({
                 projectId: projectId,
                 investorId: investorId,
-                share: 0 // Default share
+                share: sharePercent / 100 // Convert percentage to ratio
             });
             // Refresh the entire view
             handleProjectSelect();
