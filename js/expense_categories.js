@@ -32,7 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderCategories = async () => {
         try {
-            // Note: Using settlementDb, not the old db
             const categories = await settlementDb.expense_categories.toArray();
             tableBody.innerHTML = '';
             categories.forEach(cat => {

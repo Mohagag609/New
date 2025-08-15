@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderProjects = async () => {
         try {
-            const projects = await db.projects.toArray();
+            const projects = await settlementDb.projects.toArray();
             tableBody.innerHTML = '';
             projects.forEach(p => {
                 const row = document.createElement('tr');
@@ -70,10 +70,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             if (id) {
-                await db.projects.put({ ...projectData, id });
+                await settlementDb.projects.put({ ...projectData, id });
                 alert('تم تحديث المشروع بنجاح.');
             } else {
-                await db.projects.add(projectData);
+                await settlementDb.projects.add(projectData);
                 alert('تمت إضافة المشروع بنجاح.');
             }
             closeModal();
@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // This is a cascading delete, which is complex.
             // For now, just delete the project itself. The user was warned about data loss.
-            await db.projects.delete(id);
+            await settlementDb.projects.delete(id);
             alert('تم حذف المشروع.');
             renderProjects();
         } catch (error) {
@@ -207,7 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = Number(target.dataset.id);
 
         if (target.classList.contains('edit-btn')) {
-            const project = await db.projects.get(id);
+            const project = await settlementDb.projects.get(id);
             if (project) openModal(project);
         } else if (target.classList.contains('delete-btn')) {
             handleDelete(id);
