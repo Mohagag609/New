@@ -192,7 +192,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error('Failed to generate report:', error);
-            alert('حدث خطأ أثناء إنشاء التقرير.');
+            let userMessage = 'حدث خطأ أثناء إنشاء التقرير.';
+            if (error.name) {
+                userMessage += `\n\nالنوع: ${error.name}`;
+            }
+            if (error.message) {
+                userMessage += `\nالرسالة: ${error.message}`;
+            }
+            alert(userMessage);
         }
     };
 
