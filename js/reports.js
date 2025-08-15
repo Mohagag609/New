@@ -278,13 +278,7 @@ document.addEventListener('DOMContentLoaded', () => {
     clearBtn.addEventListener('click', clearReport);
     exportBtn.addEventListener('click', exportToCSV);
     printBtn.addEventListener('click', () => {
-        document.body.classList.add('is-printing');
-        page.classList.add('printing');
-        window.onafterprint = () => {
-            document.body.classList.remove('is-printing');
-            page.classList.remove('printing');
-        };
-        window.print();
+        printContent('report-results', 'تقرير دفتر الخزنة');
     });
 
     document.addEventListener('show', (e) => {

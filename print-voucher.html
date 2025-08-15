@@ -42,7 +42,7 @@
 </head>
 <body class="bg-gray-200">
 
-    <div class="voucher-box">
+    <div id="voucher-box-main" class="voucher-box">
         <!-- Header -->
         <header class="flex justify-between items-start pb-4 border-b-2 border-black">
             <div class="text-right">
@@ -108,7 +108,7 @@
     </div>
 
     <div class="text-center mt-4 no-print">
-        <button onclick="window.print()" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+        <button onclick="printContent('voucher-box-main', 'طباعة سند')" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
             طباعة
         </button>
          <button onclick="window.close()" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
@@ -117,6 +117,7 @@
     </div>
 
     <script src="js/database.js"></script>
+    <script src="js/print-helper.js"></script>
     <script src="js/print-voucher.js"></script>
 </body>
 </html>
