@@ -299,7 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderVouchers();
         } catch (error) {
             console.error('Failed to save voucher:', error);
-            alert('حدث خطأ أثناء حفظ السند.');
+            alert(`حدث خطأ أثناء حفظ السند: ${error.stack}`);
         }
     };
 
