@@ -36,6 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const cashboxSelect = document.getElementById('voucher-cashbox');
     const partySelect = document.getElementById('voucher-party');
     const accountSelect = document.getElementById('voucher-account');
+    const onBehalfInvestorContainer = document.getElementById('on-behalf-investor-container');
+    const onBehalfInvestorSelect = document.getElementById('voucher-on-behalf-investor');
 
     const transferFields = document.getElementById('transfer-fields');
     const fromCashboxSelect = document.getElementById('from-cashbox');
@@ -94,6 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
         creditInput.parentElement.classList.remove('hidden');
         accountSelect.parentElement.classList.remove('hidden');
         partySelect.parentElement.classList.remove('hidden');
+        onBehalfInvestorContainer.classList.add('hidden'); // Hide by default
 
         debitInput.disabled = false;
         creditInput.disabled = false;
@@ -110,6 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 debitInput.value = 0;
                 debitInput.disabled = true;
                 populateAccountsDropdown('Expense');
+                onBehalfInvestorContainer.classList.remove('hidden'); // Show for Payment
                 break;
             case 'Transfer':
                 modalTitle.textContent = 'إنشاء تحويل مالي';
@@ -291,21 +295,70 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (currentVoucherMode === 'Receipt' && voucherData.debit <= 0) return alert('مبلغ القبض يجب أن يكون أكبر من صفر.');
                 if (currentVoucherMode === 'Payment' && voucherData.credit <= 0) return alert('مبلغ الصرف يجب أن يكون أكبر من صفر.');
 
-                await db.transaction('rw', db.vouchers, async () => {
-                    const lastVoucher = await db.vouchers.orderBy('id').last();
-                    let lastNo = 0;
-                    if (lastVoucher && lastVoucher.voucherNo) {
-                        if (String(lastVoucher.voucherNo).includes('-')) {
-                            lastNo = parseInt(lastVoucher.voucherNo.split('-')[1], 10);
-                        } else {
-                            lastNo = parseInt(lastVoucher.voucherNo, 10);
-                        }
-                    }
-                    voucherData.voucherNo = isNaN(lastNo) ? 1 : lastNo + 1;
-                    await db.vouchers.add(voucherData);
-                });
+                const onBehalfInvestorId = Number(onBehalfInvestorSelect.value);
 
-                alert('تم حفظ السند بنجاح.');
+                // If an investor is selected for a payment, perform a dual-DB transaction
+                if (currentVoucherMode === 'Payment' && onBehalfInvestorId) {
+
+                    // Get the project ID from the settlement context
+                    const settlementProjectId = Number(localStorage.getItem('currentSettlementProjectId'));
+                    if (!settlementProjectId) {
+                        return alert('خطأ: لم يتم تحديد مشروع تسوية حالي. لا يمكن حفظ المصروف.');
+                    }
+
+                    await Dexie.transaction('rw', db.vouchers, settlementDB.settlement_vouchers, async () => {
+                        // 1. Create Treasury Voucher
+                        const lastVoucher = await db.vouchers.orderBy('id').last();
+                        let lastNo = 0;
+                        if (lastVoucher && lastVoucher.voucherNo) {
+                           if (String(lastVoucher.voucherNo).includes('-')) {
+                                lastNo = parseInt(lastVoucher.voucherNo.split('-')[1], 10);
+                            } else {
+                                lastNo = parseInt(lastVoucher.voucherNo, 10);
+                            }
+                        }
+                        voucherData.voucherNo = isNaN(lastNo) ? 1 : lastNo + 1;
+                        // Add a note about the settlement
+                        voucherData.description = `(مصروف تسوية) ${voucherData.description}`;
+                        const treasuryVoucherId = await db.vouchers.add(voucherData);
+
+                        // 2. Create Settlement Voucher
+                        const settlementVoucherData = {
+                            projectId: settlementProjectId,
+                            date: voucherData.date,
+                            // Note: We use the treasury accountId, assuming it maps conceptually
+                            // to an expense category in the settlement system.
+                            // A more robust system might have a dedicated mapping.
+                            categoryId: voucherData.accountId,
+                            amount: voucherData.credit, // The amount paid
+                            paidByInvestorId: onBehalfInvestorId,
+                            description: `(من الخزينة) ${voucherData.description}`,
+                            treasuryVoucherId: treasuryVoucherId, // Link back to the treasury voucher
+                            createdAt: now,
+                            updatedAt: now
+                        };
+                        await settlementDB.settlement_vouchers.add(settlementVoucherData);
+                    });
+                     alert('تم حفظ سند الصرف ومصروف التسوية بنجاح.');
+
+                } else {
+                    // Standard, single-DB transaction
+                    await db.transaction('rw', db.vouchers, async () => {
+                        const lastVoucher = await db.vouchers.orderBy('id').last();
+                        let lastNo = 0;
+                        if (lastVoucher && lastVoucher.voucherNo) {
+                            if (String(lastVoucher.voucherNo).includes('-')) {
+                                lastNo = parseInt(lastVoucher.voucherNo.split('-')[1], 10);
+                            } else {
+                                lastNo = parseInt(lastVoucher.voucherNo, 10);
+                            }
+                        }
+                        voucherData.voucherNo = isNaN(lastNo) ? 1 : lastNo + 1;
+                        await db.vouchers.add(voucherData);
+                    });
+
+                    alert('تم حفظ السند بنجاح.');
+                }
             }
 
             closeModal();
