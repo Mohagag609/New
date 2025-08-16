@@ -136,22 +136,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // Explicitly list all tables to ensure everything is cleared.
-            const allTableNames = [
-                'cashboxes', 'parties', 'accounts', 'vouchers',
-                'projects', 'investors', 'project_investors',
-                'settlement_vouchers', 'expense_categories', 'adjustments'
-            ];
-            await db.transaction('rw', allTableNames, async () => {
-                await Promise.all(allTableNames.map(name => db.table(name).clear()));
-            });
+            // Dexie.delete() should handle closing connections.
+            // Removing explicit db.close() as it might interfere.
+            await Dexie.delete('TreasuryDB');
 
             localStorage.clear(); // Also clear settings like company name and currency
-            alert('تم مسح جميع البيانات بنجاح. سيتم إعادة تحميل التطبيق.');
+            alert('تم حذف قاعدة البيانات بنجاح. سيتم إعادة تحميل التطبيق.');
             window.location.reload();
         } catch (error) {
-            console.error('Failed to clear database:', error);
-            alert('حدث خطأ أثناء محاولة مسح البيانات.');
+            console.error('Failed to delete database:', error);
+            alert(`حدث خطأ أثناء محاولة حذف قاعدة البيانات: ${error.stack}`);
         }
     };
     factoryResetBtn.addEventListener('click', factoryReset);
