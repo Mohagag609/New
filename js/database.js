@@ -19,7 +19,7 @@ db.version(8).stores({
     vouchers: '++id, &voucherNo, [cashboxId+date], transferId, partyId, accountId, movementType, projectId, date',
     settlement_vouchers: '++id, projectId, date, accountId, paidByInvestorId, receivedByInvestorId, partyId, type', // Added type
     adjustments: '++id, projectId, date',
-    project_settlements: '++id, &[projectId+settlementDate], projectId, settlementDate'
+    project_settlements: '++id, [projectId+settlementDate], projectId, settlementDate'
 });
 
 // Open the database

@@ -38,21 +38,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 .sortBy('settlementDate');
 
             const lastSettlementRecord = lastSettlement[0];
-            const previousBalances = new Map();
+            const previousContributions = new Map();
             let startDate = new Date(0); // The beginning of time if no settlement exists
 
             const previousSettlementSummaryDiv = document.getElementById('previous-settlement-summary');
             if (lastSettlementRecord) {
                 startDate = new Date(lastSettlementRecord.settlementDate);
+                // The 'balances' field in the snapshot now stores cumulative contributions
                 lastSettlementRecord.balances.forEach(item => {
-                    previousBalances.set(item.investorId, item.balance);
+                    previousContributions.set(item.investorId, item.balance);
                 });
 
-                let summaryHtml = `<p class="mb-2"><strong>تاريخ آخر تسوية:</strong> ${lastSettlementRecord.settlementDate}</p><ul class="list-disc pr-5">`;
+                let summaryHtml = `<p class="mb-2"><strong>إجمالي المساهمات حتى تاريخ آخر تسوية (${lastSettlementRecord.settlementDate}):</strong></p><ul class="list-disc pr-5">`;
                 investorIds.forEach(id => {
-                    const balance = previousBalances.get(id) || 0;
-                    const balanceClass = balance >= 0 ? 'text-green-600' : 'text-red-600';
-                    summaryHtml += `<li>${investorMap.get(id) || 'غير معروف'}: <span class="font-bold ${balanceClass}">${formatCurrency(balance)}</span></li>`;
+                    const balance = previousContributions.get(id) || 0;
+                    summaryHtml += `<li>${investorMap.get(id) || 'غير معروف'}: <span class="font-bold">${formatCurrency(balance)}</span></li>`;
                 });
                 summaryHtml += '</ul>';
                 previousSettlementSummaryDiv.innerHTML = summaryHtml;
@@ -102,11 +102,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             projectInvestors.forEach(pi => {
                 const settlementRatio = useEqualSplit && projectInvestors.length > 0 ? (1 / projectInvestors.length) : (pi.share || 0);
-                const prevBalance = previousBalances.get(pi.investorId) || 0;
                 const currentPaid = periodContribution.get(pi.investorId) || 0;
                 const fairShare = totalPeriodExpenses * settlementRatio;
 
-                const finalBalance = prevBalance + currentPaid - fairShare;
+                // The balance to be settled is based on the current period's activity ONLY.
+                const balanceForThisPeriod = currentPaid - fairShare;
 
                 settlementData.push({
                     investorId: pi.investorId,
@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     settlementRatio: `${(settlementRatio * 100).toFixed(2)}%`,
                     fairShare: fairShare, // Their share of this period's expenses
                     paid: currentPaid, // What they paid this period
-                    balance: finalBalance // The final balance to be settled
+                    balance: balanceForThisPeriod // The final balance to be settled
                 });
             });
 
@@ -176,15 +176,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const today = new Date().toISOString().split('T')[0];
 
         try {
+            // Fetch the last settlement to get previous cumulative contributions
+            const lastSettlement = await db.project_settlements.where({ projectId }).reverse().sortBy('settlementDate');
+            const lastSettlementRecord = lastSettlement[0];
+            const previousContributions = new Map();
+            if (lastSettlementRecord) {
+                lastSettlementRecord.balances.forEach(item => {
+                    previousContributions.set(item.investorId, item.balance);
+                });
+            }
+
+            // Generate settlement vouchers (this logic is unchanged)
             let creditors = settlementData.filter(d => d.balance > 0).map(d => ({...d})).sort((a,b) => b.balance - a.balance);
             let debtors = settlementData.filter(d => d.balance < 0).map(d => ({...d, balance: -d.balance})).sort((a,b) => b.balance - a.balance);
             const newVouchers = [];
-
             while (creditors.length > 0 && debtors.length > 0) {
                 const creditor = creditors[0];
                 const debtor = debtors[0];
                 const amount = Math.min(creditor.balance, debtor.balance);
-
                 newVouchers.push({
                     projectId,
                     date: today,
@@ -194,31 +203,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     receivedByInvestorId: creditor.investorId,
                     notes: `تسوية مستثمر من ${debtor.investorName} إلى ${creditor.investorName}`
                 });
-
                 creditor.balance -= amount;
                 debtor.balance -= amount;
                 if (creditor.balance < 0.01) creditors.shift();
                 if (debtor.balance < 0.01) debtors.shift();
             }
 
-            // Calculate the final balances after this settlement to be saved in the snapshot
-            const finalBalances = new Map();
+            // Calculate the NEW cumulative contributions to save in the snapshot
+            const newCumulativeContributions = new Map();
             settlementData.forEach(d => {
-                finalBalances.set(d.investorId, d.balance);
-            });
-
-            newVouchers.forEach(v => {
-                const debtorBalance = finalBalances.get(v.paidByInvestorId);
-                finalBalances.set(v.paidByInvestorId, debtorBalance + v.amount);
-
-                const creditorBalance = finalBalances.get(v.receivedByInvestorId);
-                finalBalances.set(v.receivedByInvestorId, creditorBalance - v.amount);
+                const prevContribution = previousContributions.get(d.investorId) || 0;
+                const periodContribution = d.paid; // 'paid' in settlementData is the period's contribution
+                newCumulativeContributions.set(d.investorId, prevContribution + periodContribution);
             });
 
             const newSettlementRecord = {
                 projectId,
                 settlementDate: today,
-                balances: Array.from(finalBalances.entries()).map(([investorId, balance]) => ({ investorId, balance }))
+                // Save the new cumulative contributions as the 'balance' for the next period
+                balances: Array.from(newCumulativeContributions.entries()).map(([investorId, balance]) => ({ investorId, balance }))
             };
 
             // Use a transaction to save both vouchers and the settlement record
