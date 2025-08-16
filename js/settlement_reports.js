@@ -42,26 +42,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalExpenses = expenseVouchers.reduce((sum, v) => sum + v.amount, 0);
             totalExpensesSpan.textContent = formatCurrency(totalExpenses);
 
-            // Calculate totals for the "Investor Expenses Report" (pre-settlement)
-            const investorExpenseTotals = new Map();
-            expenseVouchers.forEach(v => {
-                const currentPaid = investorExpenseTotals.get(v.paidByInvestorId) || 0;
-                investorExpenseTotals.set(v.paidByInvestorId, currentPaid + v.amount);
-            });
-
-            investorExpensesTbody.innerHTML = '';
-            allUniqueInvestorIds.forEach(investorId => {
-                const totalPaid = investorExpenseTotals.get(investorId) || 0;
-                investorExpensesTbody.innerHTML += `
-                    <tr>
-                        <td class="px-5 py-3">${investorMap.get(investorId) || 'غير معروف'}</td>
-                        <td class="px-5 py-3">${formatCurrency(totalPaid)}</td>
-                    </tr>
-                `;
-            });
-
-            // Calculate effective contribution for "Final Settlement Report" (post-settlement)
+            // Calculate effective contribution, considering both expenses and settlements
             const paidByInvestor = new Map();
+
             // Start with expenses paid
             expenseVouchers.forEach(v => {
                 const currentPaid = paidByInvestor.get(v.paidByInvestorId) || 0;
@@ -77,6 +60,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Creditor (receiver) decreases their effective contribution (as they were reimbursed)
                 const creditorContribution = paidByInvestor.get(v.receivedByInvestorId) || 0;
                 paidByInvestor.set(v.receivedByInvestorId, creditorContribution - v.amount);
+            });
+
+            // Populate the "Investor Payments Report" table using the effective contribution
+            investorExpensesTbody.innerHTML = '';
+            allUniqueInvestorIds.forEach(investorId => {
+                const totalPaid = paidByInvestor.get(investorId) || 0;
+                investorExpensesTbody.innerHTML += `
+                    <tr>
+                        <td class="px-5 py-3">${investorMap.get(investorId) || 'غير معروف'}</td>
+                        <td class="px-5 py-3">${formatCurrency(totalPaid)}</td>
+                    </tr>
+                `;
             });
 
             const totalShares = projectInvestors.reduce((sum, pi) => sum + (pi.share || 0), 0);
