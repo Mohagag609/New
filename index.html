@@ -789,9 +789,14 @@
                         <label for="settlement-report-project-select" class="block text-sm font-medium text-gray-700 text-right">اختر المشروع لعرض تقاريره</label>
                         <select id="settlement-report-project-select" class="mt-1 block w-full md:w-1/2 border-gray-300 rounded-md shadow-sm"></select>
                     </div>
-                    <button id="print-settlement-report-btn" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
-                        طباعة
-                    </button>
+                    <div class="space-x-2 space-x-reverse">
+                        <button id="print-settlement-details-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                            طباعة التفاصيل
+                        </button>
+                        <button id="print-final-settlement-btn" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                            طباعة التسوية النهائية
+                        </button>
+                    </div>
                 </div>
 
                 <div id="settlement-report-content" class="hidden space-y-8">
@@ -812,7 +817,7 @@
                     </div>
 
                     <!-- Final Settlement Section -->
-                    <div>
+                    <div id="final-settlement-div">
                         <h3 class="text-2xl font-bold mb-4">شاشة التسوية النهائية</h3>
                         <div class="bg-white shadow-md rounded p-4">
                             <p class="mb-4"><strong>إجمالي مصروفات المشروع:</strong> <span id="settlement-total-expenses" class="font-bold"></span></p>
@@ -909,6 +914,7 @@
     <script src="js/print-helper.js"></script>
     <script src="js/settings.js"></script>
     <script src="js/dashboard.js"></script>
+    <div id="detailed-print-area" class="hidden"></div>
     <script src="js/main.js"></script>
 </body>
 </html>

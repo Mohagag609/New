@@ -3,7 +3,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!page) return;
 
     const projectSelect = document.getElementById('settlement-report-project-select');
-    const printBtn = document.getElementById('print-settlement-report-btn');
+    const finalSettlementPrintBtn = document.getElementById('print-final-settlement-btn');
+    const detailsPrintBtn = document.getElementById('print-settlement-details-btn');
+    // const printBtn = document.getElementById('print-settlement-report-btn'); // Old generic button
     const reportContent = document.getElementById('settlement-report-content');
 
     const investorExpensesTbody = document.getElementById('investor-expenses-report-body');
@@ -145,10 +147,106 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     projectSelect.addEventListener('change', generateReports);
-    printBtn.addEventListener('click', () => {
+
+    finalSettlementPrintBtn.addEventListener('click', () => {
         const projectName = projectSelect.options[projectSelect.selectedIndex].text;
-        printContent('settlement-report-content', `تقارير تسوية - ${projectName}`);
+        if (!projectName) {
+            alert("الرجاء اختيار مشروع أولاً.");
+            return;
+        }
+        printContent('final-settlement-div', `التسوية النهائية - ${projectName}`);
     });
+
+    const detailedPrintArea = document.getElementById('detailed-print-area');
+
+    const generateAndPrintDetailedReport = async () => {
+        const projectId = Number(projectSelect.value);
+        const projectName = projectSelect.options[projectSelect.selectedIndex].text;
+        if (!projectId) {
+            alert("الرجاء اختيار مشروع أولاً.");
+            return;
+        }
+
+        try {
+            const [vouchers, categories, projectInvestors] = await Promise.all([
+                db.settlement_vouchers.where({ projectId }).toArray(),
+                db.expense_categories.toArray(),
+                db.project_investors.where({ projectId }).toArray()
+            ]);
+
+            const investorIds = [...new Set(projectInvestors.map(pi => pi.investorId))];
+            if (investorIds.length === 0) {
+                alert("لا يوجد مستثمرون مرتبطون بهذا المشروع.");
+                return;
+            }
+            const investors = await db.investors.bulkGet(investorIds);
+
+            const investorMap = new Map(investors.map(i => [i.id, i.name]));
+            const categoryMap = new Map(categories.map(c => [c.id, c.name]));
+
+            // Group vouchers by investor
+            const vouchersByInvestor = new Map();
+            investors.forEach(inv => vouchersByInvestor.set(inv.id, []));
+            vouchers.forEach(v => {
+                if (vouchersByInvestor.has(v.paidByInvestorId)) {
+                    vouchersByInvestor.get(v.paidByInvestorId).push(v);
+                }
+            });
+
+            let reportHtml = `<h1 class="text-2xl font-bold text-center mb-4">تقرير المصروفات التفصيلي لمشروع: ${projectName}</h1>`;
+
+            for (const [investorId, investorVouchers] of vouchersByInvestor.entries()) {
+                const investorName = investorMap.get(investorId);
+                reportHtml += `<div class="mb-8" style="page-break-after: always;">`;
+                reportHtml += `<h2 class="text-xl font-bold border-b-2 border-gray-300 pb-2 mb-4">المستثمر: ${investorName}</h2>`;
+
+                if (investorVouchers.length === 0) {
+                    reportHtml += `<p>لا توجد مصروفات مسجلة لهذا المستثمر.</p>`;
+                } else {
+                    reportHtml += `<table class="min-w-full leading-normal" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">التاريخ</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">التصنيف</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">البيان</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">المبلغ</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+                    let total = 0;
+                    investorVouchers.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(v => {
+                        reportHtml += `<tr>
+                            <td class="px-5 py-2 border-b">${v.date}</td>
+                            <td class="px-5 py-2 border-b">${categoryMap.get(v.categoryId) || 'غير معروف'}</td>
+                            <td class="px-5 py-2 border-b">${v.notes || ''}</td>
+                            <td class="px-5 py-2 border-b text-left">${formatCurrency(v.amount)}</td>
+                        </tr>`;
+                        total += v.amount;
+                    });
+
+                    reportHtml += `</tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="3" class="px-5 py-2 border-t-2 font-bold text-right">الإجمالي</td>
+                                <td class="px-5 py-2 border-t-2 font-bold text-left">${formatCurrency(total)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>`;
+                }
+                reportHtml += `</div>`;
+            }
+
+            detailedPrintArea.innerHTML = reportHtml;
+            printContent('detailed-print-area', `تقرير تفصيلي - ${projectName}`);
+
+        } catch (error) {
+            console.error('Failed to generate detailed report:', error);
+            alert('حدث خطأ أثناء إنشاء التقرير التفصيلي.');
+        }
+    };
+
+    detailsPrintBtn.addEventListener('click', generateAndPrintDetailedReport);
 
     document.addEventListener('show', (e) => {
         if (e.detail.pageId === 'page-settlement-reports') {
