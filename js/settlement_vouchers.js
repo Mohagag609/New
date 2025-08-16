@@ -34,9 +34,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Populate dropdowns
         await Promise.all([
-            populateSelect(projectSelect, () => settlementDb.projects.toArray()),
-            populateSelect(investorSelect, () => settlementDb.investors.toArray()),
-            populateSelect(categorySelect, () => settlementDb.expense_categories.toArray())
+            populateSelect(projectSelect, () => db.projects.toArray()),
+            populateSelect(investorSelect, () => db.investors.toArray()),
+            populateSelect(categorySelect, () => db.expense_categories.toArray())
         ]);
 
         dateInput.valueAsDate = new Date();
@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderVouchers = async () => {
         try {
-            const vouchers = await settlementDb.settlement_vouchers.orderBy('id').reverse().toArray();
+            const vouchers = await db.settlement_vouchers.orderBy('id').reverse().toArray();
             if (vouchers.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4">لا توجد سندات حالياً.</td></tr>`;
                 return;
@@ -67,9 +67,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Fetch all lookup data in one go
             const [projects, investors, categories] = await Promise.all([
-                settlementDb.projects.bulkGet(projectIds),
-                settlementDb.investors.bulkGet(investorIds),
-                settlementDb.expense_categories.bulkGet(categoryIds)
+                db.projects.bulkGet(projectIds),
+                db.investors.bulkGet(investorIds),
+                db.expense_categories.bulkGet(categoryIds)
             ]);
 
             // Create maps for efficient lookup
@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            await settlementDb.settlement_vouchers.add(voucherData);
+            await db.settlement_vouchers.add(voucherData);
             alert('تم حفظ سند الصرف بنجاح.');
             closeModal();
             renderVouchers();
@@ -132,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(e.target.classList.contains('delete-btn')) {
             const id = Number(e.target.dataset.id);
             if (confirm('هل أنت متأكد من حذف هذا السند؟')) {
-                await settlementDb.settlement_vouchers.delete(id);
+                await db.settlement_vouchers.delete(id);
                 renderVouchers();
             }
         }

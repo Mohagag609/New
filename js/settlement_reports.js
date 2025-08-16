@@ -23,15 +23,15 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // 1. Fetch all necessary data for the selected project
             const [vouchers, projectInvestors] = await Promise.all([
-                settlementDb.settlement_vouchers.where({ projectId }).toArray(),
-                settlementDb.project_investors.where({ projectId }).toArray()
+                db.settlement_vouchers.where({ projectId }).toArray(),
+                db.project_investors.where({ projectId }).toArray()
             ]);
 
             // 1a. Get all unique investor IDs from both lists and fetch their data
             const investorIdsFromVouchers = vouchers.map(v => v.paidByInvestorId);
             const investorIdsFromProject = projectInvestors.map(pi => pi.investorId);
             const allUniqueInvestorIds = [...new Set([...investorIdsFromVouchers, ...investorIdsFromProject])];
-            const allInvestors = await settlementDb.investors.bulkGet(allUniqueInvestorIds);
+            const allInvestors = await db.investors.bulkGet(allUniqueInvestorIds);
 
             const investorMap = new Map(allInvestors.filter(i => i).map(i => [i.id, i.name]));
 
@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const initializePage = async () => {
-        const projects = await settlementDb.projects.toArray();
+        const projects = await db.projects.toArray();
         projectSelect.innerHTML = '<option value="">اختر مشروعاً...</option>';
         projects.forEach(p => {
             const option = document.createElement('option');

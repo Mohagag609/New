@@ -8,16 +8,24 @@ db.version(1).stores({
     vouchers: '++id, &voucherNo, [cashboxId+date], transferId, partyId, accountId, movementType',
 });
 
-// Version 2: Multi-Project Architecture
-// This is a breaking change and will require data to be re-seeded or migrated.
+// Version 2: Unified Schema
+// This version merges the tables from the old SettlementDB into the main TreasuryDB
+// to create a single source of truth for all application data.
 db.version(2).stores({
-    // Keep tables from version 1, but add the projectId index to them
+    // Core Treasury Tables (upgraded with projectId)
     cashboxes: '++id, &name, projectId',
     parties: '++id, &[type+name], projectId',
     accounts: '++id, &[type+name], projectId',
-    vouchers: '++id, &voucherNo, [cashboxId+date], transferId, partyId, accountId, movementType, projectId, date'
-});
+    vouchers: '++id, &voucherNo, [cashboxId+date], transferId, partyId, accountId, movementType, projectId, date',
 
+    // Tables from the former SettlementDB
+    projects: '++id, &name, status',
+    investors: '++id, &name, isActive',
+    project_investors: '++id, &[projectId+investorId], projectId, investorId',
+    settlement_vouchers: '++id, projectId, date, categoryId, paidByInvestorId, receivedByInvestorId',
+    expense_categories: '++id, &name',
+    adjustments: '++id, projectId, date'
+});
 
 // Open the database
 db.open().catch(function (e) {

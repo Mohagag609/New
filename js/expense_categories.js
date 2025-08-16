@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderCategories = async () => {
         try {
-            const categories = await settlementDb.expense_categories.toArray();
+            const categories = await db.expense_categories.toArray();
             tableBody.innerHTML = '';
             categories.forEach(cat => {
                 const row = document.createElement('tr');
@@ -64,10 +64,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             if (id) {
-                await settlementDb.expense_categories.put({ ...categoryData, id });
+                await db.expense_categories.put({ ...categoryData, id });
                 alert('تم تحديث التصنيف بنجاح.');
             } else {
-                await settlementDb.expense_categories.add(categoryData);
+                await db.expense_categories.add(categoryData);
                 alert('تمت إضافة التصنيف بنجاح.');
             }
             closeModal();
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         try {
             // A real app should check if this category is used in any vouchers first.
-            await settlementDb.expense_categories.delete(id);
+            await db.expense_categories.delete(id);
             alert('تم حذف التصنيف.');
             renderCategories();
         } catch (error) {
@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = Number(target.dataset.id);
 
         if (target.classList.contains('edit-btn')) {
-            const category = await settlementDb.expense_categories.get(id);
+            const category = await db.expense_categories.get(id);
             if (category) openModal(category);
         }
 

@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderInvestors = async () => {
         try {
-            const investors = await settlementDb.investors.toArray();
+            const investors = await db.investors.toArray();
             tableBody.innerHTML = '';
             investors.forEach(inv => {
                 const row = document.createElement('tr');
@@ -64,10 +64,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             if (id) {
-                await settlementDb.investors.put({ ...investorData, id });
+                await db.investors.put({ ...investorData, id });
                 alert('تم تحديث المستثمر بنجاح.');
             } else {
-                await settlementDb.investors.add(investorData);
+                await db.investors.add(investorData);
                 alert('تمت إضافة المستثمر بنجاح.');
             }
             closeModal();
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         try {
-            await settlementDb.investors.delete(id);
+            await db.investors.delete(id);
             alert('تم حذف المستثمر.');
             renderInvestors();
         } catch (error) {
@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = Number(target.dataset.id);
 
         if (target.classList.contains('edit-btn')) {
-            const investor = await settlementDb.investors.get(id);
+            const investor = await db.investors.get(id);
             if (investor) openModal(investor);
         }
 

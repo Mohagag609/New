@@ -35,13 +35,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const project = await settlementDb.projects.get(projectId);
+        const project = await db.projects.get(projectId);
         ratiosProjectName.textContent = project.name;
 
-        currentProjectLinks = await settlementDb.project_investors.where({ projectId }).toArray();
+        currentProjectLinks = await db.project_investors.where({ projectId }).toArray();
         const linkedInvestorIds = new Set(currentProjectLinks.map(l => l.investorId));
 
-        const allInvestors = await settlementDb.investors.toArray();
+        const allInvestors = await db.investors.toArray();
         const linkedInvestors = allInvestors.filter(i => linkedInvestorIds.has(i.id));
         const unlinkedInvestors = allInvestors.filter(i => !linkedInvestorIds.has(i.id));
 
@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         try {
-            await settlementDb.project_investors.bulkUpdate(updates);
+            await db.project_investors.bulkUpdate(updates);
             alert('تم حفظ النسب بنجاح!');
         } catch (error) {
             console.error('Failed to save ratios:', error);
@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const initializePage = async () => {
-        const projects = await settlementDb.projects.toArray();
+        const projects = await db.projects.toArray();
         projectSelect.innerHTML = '<option value="">اختر مشروعاً...</option>';
         projects.forEach(p => {
             const option = document.createElement('option');
@@ -123,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            await settlementDb.project_investors.add({
+            await db.project_investors.add({
                 projectId: projectId,
                 investorId: investorId,
                 share: sharePercent / 100 // Convert percentage to ratio

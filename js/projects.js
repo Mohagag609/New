@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderProjects = async () => {
         try {
-            const projects = await settlementDb.projects.toArray();
+            const projects = await db.projects.toArray();
             tableBody.innerHTML = '';
             projects.forEach(p => {
                 const row = document.createElement('tr');
@@ -70,10 +70,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             if (id) {
-                await settlementDb.projects.put({ ...projectData, id });
+                await db.projects.put({ ...projectData, id });
                 alert('تم تحديث المشروع بنجاح.');
             } else {
-                await settlementDb.projects.add(projectData);
+                await db.projects.add(projectData);
                 alert('تمت إضافة المشروع بنجاح.');
             }
             closeModal();
@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // This is a cascading delete, which is complex.
             // For now, just delete the project itself. The user was warned about data loss.
-            await settlementDb.projects.delete(id);
+            await db.projects.delete(id);
             alert('تم حذف المشروع.');
             renderProjects();
         } catch (error) {
@@ -121,14 +121,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const openManageInvestorsModal = async (projectId) => {
         currentManagingProjectId = projectId;
-        const project = await settlementDb.projects.get(projectId);
+        const project = await db.projects.get(projectId);
         if (!project) return;
 
         projInvModalTitle.textContent = project.name;
         linkInvestorForm.reset();
 
         // Populate investor dropdown
-        const allInvestors = await settlementDb.investors.toArray();
+        const allInvestors = await db.investors.toArray();
         investorSelect.innerHTML = '<option value="">اختر مستثمراً...</option>';
         allInvestors.forEach(inv => {
             const option = document.createElement('option');
@@ -142,9 +142,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const renderLinkedInvestors = async (projectId) => {
-        const links = await settlementDb.project_investors.where({ projectId }).toArray();
+        const links = await db.project_investors.where({ projectId }).toArray();
         const investorIds = links.map(l => l.investorId);
-        const investors = await settlementDb.investors.bulkGet(investorIds);
+        const investors = await db.investors.bulkGet(investorIds);
         const investorMap = new Map(investors.map(i => [i.id, i.name]));
 
         projInvList.innerHTML = '';
@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!investorId || !currentManagingProjectId) return;
 
         try {
-            await settlementDb.project_investors.add({
+            await db.project_investors.add({
                 projectId: currentManagingProjectId,
                 investorId: investorId,
                 share: share
@@ -186,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const handleRemoveLink = async (linkId) => {
         if (!confirm('هل أنت متأكد من إزالة هذا المستثمر من المشروع؟')) return;
         try {
-            await settlementDb.project_investors.delete(linkId);
+            await db.project_investors.delete(linkId);
             await renderLinkedInvestors(currentManagingProjectId);
         } catch (error) {
             console.error('Failed to remove investor link:', error);
@@ -207,7 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = Number(target.dataset.id);
 
         if (target.classList.contains('edit-btn')) {
-            const project = await settlementDb.projects.get(id);
+            const project = await db.projects.get(id);
             if (project) openModal(project);
         } else if (target.classList.contains('delete-btn')) {
             handleDelete(id);
