@@ -2,7 +2,7 @@ const db = new Dexie('TreasuryDB');
 
 // This is the final, unified, and correct schema.
 // All previous versions are deprecated. A full data clear is required by the user.
-db.version(7).stores({
+db.version(8).stores({
     // Global Tables
     cashboxes: '++id, &name, type',
     parties: '++id, &[type+name]',
@@ -18,7 +18,8 @@ db.version(7).stores({
     // Transactional Tables
     vouchers: '++id, &voucherNo, [cashboxId+date], transferId, partyId, accountId, movementType, projectId, date',
     settlement_vouchers: '++id, projectId, date, accountId, paidByInvestorId, receivedByInvestorId, partyId, type', // Added type
-    adjustments: '++id, projectId, date'
+    adjustments: '++id, projectId, date',
+    project_settlements: '++id, &[projectId+settlementDate], projectId, settlementDate'
 });
 
 // Open the database
