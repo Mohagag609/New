@@ -213,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            const [vouchers, accounts, parties, projectInvestors] = await Promise.all([
+            const [allVouchers, accounts, parties, projectInvestors] = await Promise.all([
                 db.settlement_vouchers.where({ projectId }).toArray(),
                 db.accounts.toArray(),
                 db.parties.toArray(),
@@ -225,62 +225,80 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert("لا يوجد مستثمرون مرتبطون بهذا المشروع.");
                 return;
             }
-            const investors = await db.investors.bulkGet(investorIds);
-
-            const investorMap = new Map(investors.map(i => [i.id, i.name]));
+            const allInvestors = await db.investors.toArray(); // Get all investors for names
+            const investorMap = new Map(allInvestors.map(i => [i.id, i.name]));
             const accountMap = new Map(accounts.map(a => [a.id, a.name]));
             const partyMap = new Map(parties.map(p => [p.id, p.name]));
 
-            const vouchersByInvestor = new Map();
-            investors.forEach(inv => vouchersByInvestor.set(inv.id, []));
-            vouchers.filter(v => v.type !== 'Settlement').forEach(v => {
-                if (vouchersByInvestor.has(v.paidByInvestorId)) {
-                    vouchersByInvestor.get(v.paidByInvestorId).push(v);
-                }
-            });
+            let reportHtml = `<h1 class="text-2xl font-bold text-center mb-4">تقرير الحركات التفصيلي لمشروع: ${projectName}</h1>`;
 
-            let reportHtml = `<h1 class="text-2xl font-bold text-center mb-4">تقرير المصروفات التفصيلي لمشروع: ${projectName}</h1>`;
-
-            for (const [investorId, investorVouchers] of vouchersByInvestor.entries()) {
+            for (const investorId of investorIds) {
                 const investorName = investorMap.get(investorId);
                 reportHtml += `<div class="mb-8" style="page-break-after: always;">`;
                 reportHtml += `<h2 class="text-xl font-bold border-b-2 border-gray-300 pb-2 mb-4">المستثمر: ${investorName}</h2>`;
 
-                if (investorVouchers.length === 0) {
-                    reportHtml += `<p>لا توجد مصروفات مسجلة لهذا المستثمر.</p>`;
+                const relatedVouchers = allVouchers
+                    .filter(v => v.paidByInvestorId === investorId || v.receivedByInvestorId === investorId)
+                    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                if (relatedVouchers.length === 0) {
+                    reportHtml += `<p>لا توجد حركات مسجلة لهذا المستثمر.</p>`;
                 } else {
                     reportHtml += `<table class="min-w-full leading-normal" style="width: 100%; border-collapse: collapse;">
                         <thead>
                             <tr>
                                 <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">التاريخ</th>
-                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">الحساب</th>
-                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">المورد</th>
                                 <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">البيان</th>
-                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">المبلغ</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">مدفوعات (+)</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">مقبوضات (-)</th>
                             </tr>
                         </thead>
                         <tbody>`;
 
-                    let total = 0;
-                    investorVouchers.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(v => {
-                        const accountName = accountMap.get(v.categoryId) || 'غير معروف';
-                        const partyName = v.partyId ? partyMap.get(v.partyId) || 'غير معروف' : '';
+                    let totalPaid = 0;
+                    let totalReceived = 0;
+
+                    relatedVouchers.forEach(v => {
+                        let description = '';
+                        let paidAmount = 0;
+                        let receivedAmount = 0;
+
+                        if (v.type === 'Settlement') {
+                            if (v.paidByInvestorId === investorId) { // This investor paid
+                                paidAmount = v.amount;
+                                description = `تسوية مدفوعة إلى: ${investorMap.get(v.receivedByInvestorId)}`;
+                            } else { // This investor received
+                                receivedAmount = v.amount;
+                                description = `تسوية مقبوضة من: ${investorMap.get(v.paidByInvestorId)}`;
+                            }
+                        } else { // Expense voucher
+                            paidAmount = v.amount;
+                            const accountName = accountMap.get(v.categoryId) || 'غير معروف';
+                            const partyName = v.partyId ? partyMap.get(v.partyId) || '' : '';
+                            description = `مصروف: ${accountName} ${partyName ? `(${partyName})` : ''} - ${v.notes || ''}`;
+                        }
+
+                        totalPaid += paidAmount;
+                        totalReceived += receivedAmount;
 
                         reportHtml += `<tr>
                             <td class="px-5 py-2 border-b">${v.date}</td>
-                            <td class="px-5 py-2 border-b">${accountName}</td>
-                            <td class="px-5 py-2 border-b">${partyName}</td>
-                            <td class="px-5 py-2 border-b">${v.notes || ''}</td>
-                            <td class="px-5 py-2 border-b text-left">${formatCurrency(v.amount)}</td>
+                            <td class="px-5 py-2 border-b">${description}</td>
+                            <td class="px-5 py-2 border-b text-left">${paidAmount > 0 ? formatCurrency(paidAmount) : ''}</td>
+                            <td class="px-5 py-2 border-b text-left text-red-600">${receivedAmount > 0 ? formatCurrency(receivedAmount) : ''}</td>
                         </tr>`;
-                        total += v.amount;
                     });
 
                     reportHtml += `</tbody>
                         <tfoot>
-                            <tr>
-                                <td colspan="4" class="px-5 py-2 border-t-2 font-bold text-right">الإجمالي</td>
-                                <td class="px-5 py-2 border-t-2 font-bold text-left">${formatCurrency(total)}</td>
+                            <tr class="font-bold">
+                                <td colspan="2" class="px-5 py-2 border-t-2 text-right">الإجماليات</td>
+                                <td class="px-5 py-2 border-t-2 text-left">${formatCurrency(totalPaid)}</td>
+                                <td class="px-5 py-2 border-t-2 text-left text-red-600">${formatCurrency(totalReceived)}</td>
+                            </tr>
+                            <tr class="font-bold text-lg">
+                                <td colspan="2" class="px-5 py-2 border-t-2 text-right">صافي المساهمة</td>
+                                <td colspan="2" class="px-5 py-2 border-t-2 text-left">${formatCurrency(totalPaid - totalReceived)}</td>
                             </tr>
                         </tfoot>
                     </table>`;
