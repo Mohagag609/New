@@ -227,8 +227,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 await db.project_settlements.add(newSettlementRecord);
             });
 
-            alert('تم تنفيذ التسوية بنجاح! يتم تحديث التقرير.');
-            generateReports(); // Refresh the report view
+            alert('تمت التسوية بنجاح.');
+
+            // Manually update UI to prevent re-execution without a full refresh
+            executeSettlementBtn.disabled = true;
+            settlementPlanList.innerHTML = '<li class="text-green-600 font-bold">تم تنفيذ هذه التسوية بنجاح. يرجى تحديث الصفحة لبدء تسوية جديدة.</li>';
 
         } catch (error) {
             console.error('Failed to execute settlement:', error);
