@@ -42,22 +42,41 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalExpenses = expenseVouchers.reduce((sum, v) => sum + v.amount, 0);
             totalExpensesSpan.textContent = formatCurrency(totalExpenses);
 
-            const paidByInvestor = new Map();
+            // Calculate totals for the "Investor Expenses Report" (pre-settlement)
+            const investorExpenseTotals = new Map();
             expenseVouchers.forEach(v => {
-                const currentPaid = paidByInvestor.get(v.paidByInvestorId) || 0;
-                paidByInvestor.set(v.paidByInvestorId, currentPaid + v.amount);
+                const currentPaid = investorExpenseTotals.get(v.paidByInvestorId) || 0;
+                investorExpenseTotals.set(v.paidByInvestorId, currentPaid + v.amount);
             });
 
             investorExpensesTbody.innerHTML = '';
-            // Use allUniqueInvestorIds to ensure all investors in the project are listed, even if they paid nothing.
             allUniqueInvestorIds.forEach(investorId => {
-                const totalPaid = paidByInvestor.get(investorId) || 0;
+                const totalPaid = investorExpenseTotals.get(investorId) || 0;
                 investorExpensesTbody.innerHTML += `
                     <tr>
                         <td class="px-5 py-3">${investorMap.get(investorId) || 'غير معروف'}</td>
                         <td class="px-5 py-3">${formatCurrency(totalPaid)}</td>
                     </tr>
                 `;
+            });
+
+            // Calculate effective contribution for "Final Settlement Report" (post-settlement)
+            const paidByInvestor = new Map();
+            // Start with expenses paid
+            expenseVouchers.forEach(v => {
+                const currentPaid = paidByInvestor.get(v.paidByInvestorId) || 0;
+                paidByInvestor.set(v.paidByInvestorId, currentPaid + v.amount);
+            });
+
+            // Adjust with settlement transactions
+            allVouchers.filter(v => v.type === 'Settlement').forEach(v => {
+                // Debtor (payer) increases their effective contribution
+                const debtorContribution = paidByInvestor.get(v.paidByInvestorId) || 0;
+                paidByInvestor.set(v.paidByInvestorId, debtorContribution + v.amount);
+
+                // Creditor (receiver) decreases their effective contribution (as they were reimbursed)
+                const creditorContribution = paidByInvestor.get(v.receivedByInvestorId) || 0;
+                paidByInvestor.set(v.receivedByInvestorId, creditorContribution - v.amount);
             });
 
             const totalShares = projectInvestors.reduce((sum, pi) => sum + (pi.share || 0), 0);
@@ -158,9 +177,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             await db.settlement_vouchers.bulkAdd(newVouchers);
-            alert('تم تنفيذ التسوية بنجاح!');
+            alert('تم تنفيذ التسوية بنجاح! يتم تحديث التقرير.');
             generateReports(); // Refresh the report view
-            alert('تم تحديث التقرير. يجب أن تكون الأرصدة الآن صفراً وزر التنفيذ معطلاً.');
 
         } catch (error) {
             console.error('Failed to execute settlement:', error);
