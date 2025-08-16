@@ -79,6 +79,12 @@ document.addEventListener('DOMContentLoaded', () => {
         await populateSelect(accountSelect, () => db.accounts.where({ type: type, projectId: currentProjectId }).toArray(), 'اختر الحساب');
     };
 
+    const populateInvestorsDropdown = async () => {
+        const settlementProjectId = Number(localStorage.getItem('currentSettlementProjectId'));
+        if (!settlementProjectId) return;
+        await populateSelect(onBehalfInvestorSelect, () => settlementDB.investors.where({ projectId: settlementProjectId }).toArray(), 'اختر المستثمر (اختياري)');
+    };
+
 
     // --- Voucher Number ---
     // This logic is now handled inside the form submission transaction for safety.
@@ -113,6 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 debitInput.value = 0;
                 debitInput.disabled = true;
                 populateAccountsDropdown('Expense');
+                populateInvestorsDropdown(); // <-- Add this call
                 onBehalfInvestorContainer.classList.remove('hidden'); // Show for Payment
                 break;
             case 'Transfer':
