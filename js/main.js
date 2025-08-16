@@ -26,9 +26,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             let currentProjectId = localStorage.getItem('currentProjectId');
             if (currentProjectId && projects.some(p => p.id == currentProjectId)) {
                 projectSelector.value = currentProjectId;
-            } else {
+            } else if (projects.length > 0) {
                 currentProjectId = projects[0].id;
                 localStorage.setItem('currentProjectId', currentProjectId);
+                localStorage.setItem('currentSettlementProjectId', currentProjectId);
             }
         } catch (error) {
             console.error("Failed to populate project selector:", error);
