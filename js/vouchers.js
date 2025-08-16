@@ -264,7 +264,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const settlementProjectId = Number(localStorage.getItem('currentSettlementProjectId'));
                     if (!settlementProjectId) return alert('Error: No settlement project selected.');
 
-                    await db.transaction('rw', db.vouchers, db.settlement_vouchers, async () => {
+                    await db.transaction('rw', ['vouchers', 'settlement_vouchers'], async () => {
                         const lastVoucher = await db.vouchers.orderBy('id').last();
                         let lastNo = lastVoucher ? (String(lastVoucher.voucherNo).includes('-') ? parseInt(lastVoucher.voucherNo.split('-')[1], 10) : parseInt(lastVoucher.voucherNo, 10)) : 0;
                         voucherData.voucherNo = isNaN(lastNo) ? 1 : lastNo + 1;
