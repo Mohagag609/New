@@ -121,14 +121,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const openManageInvestorsModal = async (projectId) => {
         currentManagingProjectId = projectId;
-        const project = await db.projects.get(projectId);
+        const project = await settlementDb.projects.get(projectId);
         if (!project) return;
 
         projInvModalTitle.textContent = project.name;
         linkInvestorForm.reset();
 
         // Populate investor dropdown
-        const allInvestors = await db.investors.toArray();
+        const allInvestors = await settlementDb.investors.toArray();
         investorSelect.innerHTML = '<option value="">اختر مستثمراً...</option>';
         allInvestors.forEach(inv => {
             const option = document.createElement('option');
@@ -142,9 +142,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const renderLinkedInvestors = async (projectId) => {
-        const links = await db.project_investors.where({ projectId }).toArray();
+        const links = await settlementDb.project_investors.where({ projectId }).toArray();
         const investorIds = links.map(l => l.investorId);
-        const investors = await db.investors.bulkGet(investorIds);
+        const investors = await settlementDb.investors.bulkGet(investorIds);
         const investorMap = new Map(investors.map(i => [i.id, i.name]));
 
         projInvList.innerHTML = '';
@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!investorId || !currentManagingProjectId) return;
 
         try {
-            await db.project_investors.add({
+            await settlementDb.project_investors.add({
                 projectId: currentManagingProjectId,
                 investorId: investorId,
                 share: share
@@ -186,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const handleRemoveLink = async (linkId) => {
         if (!confirm('هل أنت متأكد من إزالة هذا المستثمر من المشروع؟')) return;
         try {
-            await db.project_investors.delete(linkId);
+            await settlementDb.project_investors.delete(linkId);
             await renderLinkedInvestors(currentManagingProjectId);
         } catch (error) {
             console.error('Failed to remove investor link:', error);
