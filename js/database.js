@@ -27,9 +27,8 @@ db.version(2).stores({
     adjustments: '++id, projectId, date'
 });
 
-// Version 3: Force an upgrade. No schema changes, but this will trigger Dexie's upgrade path
-// which can resolve issues with corrupted or "stuck" database versions in the browser.
-db.version(3).stores({
+// Version 4: Add partyId to settlement vouchers to track suppliers.
+db.version(4).stores({
     cashboxes: '++id, &name',
     parties: '++id, &[type+name]',
     accounts: '++id, &[type+name], projectId',
@@ -37,7 +36,7 @@ db.version(3).stores({
     projects: '++id, &name, status',
     investors: '++id, &name, isActive',
     project_investors: '++id, &[projectId+investorId], projectId, investorId',
-    settlement_vouchers: '++id, projectId, date, categoryId, paidByInvestorId, receivedByInvestorId',
+    settlement_vouchers: '++id, projectId, date, categoryId, paidByInvestorId, receivedByInvestorId, partyId', // partyId added
     expense_categories: '++id, &name',
     adjustments: '++id, projectId, date'
 });

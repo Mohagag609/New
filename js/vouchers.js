@@ -280,6 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             projectId: settlementProjectId,
                             date: voucherData.date,
                             categoryId: voucherData.accountId,
+                            partyId: voucherData.partyId, // <-- Add partyId
                             amount: voucherData.credit,
                             paidByInvestorId: onBehalfInvestorId,
                             description: `(من الخزينة) ${voucherData.description}`,

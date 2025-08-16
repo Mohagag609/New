@@ -168,9 +168,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            const [vouchers, categories, projectInvestors] = await Promise.all([
+            // Fetch all data needed for the report in parallel
+            const [vouchers, categories, accounts, parties, projectInvestors] = await Promise.all([
                 db.settlement_vouchers.where({ projectId }).toArray(),
                 db.expense_categories.toArray(),
+                db.accounts.toArray(),
+                db.parties.toArray(),
                 db.project_investors.where({ projectId }).toArray()
             ]);
 
@@ -181,8 +184,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const investors = await db.investors.bulkGet(investorIds);
 
+            // Create maps for efficient lookups
             const investorMap = new Map(investors.map(i => [i.id, i.name]));
             const categoryMap = new Map(categories.map(c => [c.id, c.name]));
+            const accountMap = new Map(accounts.map(a => [a.id, a.name]));
+            const partyMap = new Map(parties.map(p => [p.id, p.name]));
 
             // Group vouchers by investor
             const vouchersByInvestor = new Map();
@@ -207,7 +213,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <thead>
                             <tr>
                                 <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">التاريخ</th>
-                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">التصنيف</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">التصنيف / الحساب</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">المورد</th>
                                 <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">البيان</th>
                                 <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">المبلغ</th>
                             </tr>
@@ -216,9 +223,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     let total = 0;
                     investorVouchers.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(v => {
+                        // Fallback logic for category name
+                        const categoryName = categoryMap.get(v.categoryId) || accountMap.get(v.categoryId) || 'غير معروف';
+                        const partyName = v.partyId ? partyMap.get(v.partyId) || 'غير معروف' : '';
+
                         reportHtml += `<tr>
                             <td class="px-5 py-2 border-b">${v.date}</td>
-                            <td class="px-5 py-2 border-b">${categoryMap.get(v.categoryId) || 'غير معروف'}</td>
+                            <td class="px-5 py-2 border-b">${categoryName}</td>
+                            <td class="px-5 py-2 border-b">${partyName}</td>
                             <td class="px-5 py-2 border-b">${v.notes || ''}</td>
                             <td class="px-5 py-2 border-b text-left">${formatCurrency(v.amount)}</td>
                         </tr>`;
@@ -228,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     reportHtml += `</tbody>
                         <tfoot>
                             <tr>
-                                <td colspan="3" class="px-5 py-2 border-t-2 font-bold text-right">الإجمالي</td>
+                                <td colspan="4" class="px-5 py-2 border-t-2 font-bold text-right">الإجمالي</td>
                                 <td class="px-5 py-2 border-t-2 font-bold text-left">${formatCurrency(total)}</td>
                             </tr>
                         </tfoot>
