@@ -136,12 +136,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            await Promise.all([
-                db.vouchers.clear(),
-                db.accounts.clear(),
-                db.parties.clear(),
-                db.cashboxes.clear()
-            ]);
+            // This is the robust way to clear all tables in the database
+            await db.transaction('rw', db.tables.map(t => t.name), async () => {
+                await Promise.all(db.tables.map(table => table.clear()));
+            });
             localStorage.clear(); // Also clear settings like company name and currency
             alert('تم مسح جميع البيانات بنجاح. سيتم إعادة تحميل التطبيق.');
             window.location.reload();
