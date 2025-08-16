@@ -11,7 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const finalSettlementTbody = document.getElementById('final-settlement-report-body');
     const settlementPlanList = document.getElementById('settlement-plan-list');
 
-    const formatCurrency = (amount) => new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(amount);
+    // const formatCurrency = (amount) => new Intl.NumberFormat('ar-EG', { style: 'currency', currency: 'EGP' }).format(amount);
+    // This function is now globally available from print-helper.js
 
     const generateReports = async () => {
         const projectId = Number(projectSelect.value);

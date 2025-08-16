@@ -53,3 +53,23 @@ function printContent(elementId, documentTitle = 'Print') {
         printWindow.close();
     }, 500);
 }
+
+/**
+ * Formats a number as a currency string according to Arabic-Egyptian standards.
+ * @param {number} amount The number to format.
+ * @param {string} [currency="EGP"] The ISO currency code.
+ * @returns {string} The formatted currency string.
+ */
+function formatCurrency(amount, currency = "EGP") {
+  // Use a try-catch block for environments that might not support Intl
+  try {
+    return new Intl.NumberFormat("ar-EG", {
+        style: "currency",
+        currency: currency
+    }).format(amount);
+  } catch (e) {
+    console.error("Intl.NumberFormat failed:", e);
+    // Fallback to a simple format
+    return `${amount} ${currency}`;
+  }
+}
