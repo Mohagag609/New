@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await Promise.all([
             populateSelect(projectSelect, () => db.projects.toArray()),
             populateSelect(investorSelect, () => db.investors.toArray()),
-            populateSelect(categorySelect, () => db.expense_categories.toArray())
+            populateSelect(categorySelect, () => db.accounts.where({ type: 'Expense' }).toArray())
         ]);
 
         dateInput.valueAsDate = new Date();
@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const [projects, investors, categories] = await Promise.all([
                 db.projects.bulkGet(projectIds),
                 db.investors.bulkGet(investorIds),
-                db.expense_categories.bulkGet(categoryIds)
+                db.accounts.bulkGet(categoryIds) // Use accounts table instead
             ]);
 
             // Create maps for efficient lookup

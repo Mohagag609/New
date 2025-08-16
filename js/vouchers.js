@@ -267,7 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const allTableNames = [
                         'cashboxes', 'parties', 'accounts', 'vouchers',
                         'projects', 'investors', 'project_investors',
-                        'settlement_vouchers', 'expense_categories', 'adjustments'
+                        'settlement_vouchers', 'adjustments' // 'expense_categories' was removed from schema
                     ];
                     await db.transaction('rw', allTableNames, async () => {
                         const lastVoucher = await db.vouchers.orderBy('id').last();
