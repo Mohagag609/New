@@ -83,19 +83,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const settlementProjectId = Number(localStorage.getItem('currentSettlementProjectId'));
         if (!settlementProjectId) {
             onBehalfInvestorSelect.innerHTML = '<option value="">الرجاء تحديد مشروع أولاً</option>';
+            onBehalfInvestorSelect.disabled = true;
             return;
         };
 
-        const getProjectInvestors = async () => {
-            const links = await db.project_investors.where({ projectId: settlementProjectId }).toArray();
-            const investorIds = links.map(link => link.investorId);
-            if (investorIds.length === 0) {
-                return [];
-            }
-            return db.investors.where('id').anyOf(investorIds).toArray();
-        };
+        const links = await db.project_investors.where({ projectId: settlementProjectId }).toArray();
+        onBehalfInvestorSelect.disabled = false;
 
-        await populateSelect(onBehalfInvestorSelect, getProjectInvestors, 'اختر المستثمر (اختياري)');
+        if (links.length === 0) {
+            onBehalfInvestorSelect.innerHTML = '<option value="">لا يوجد مستثمرون مرتبطون بهذا المشروع</option>';
+            onBehalfInvestorSelect.disabled = true;
+        } else {
+            const investorIds = links.map(link => link.investorId);
+            const investors = await db.investors.where('id').anyOf(investorIds).toArray();
+
+            onBehalfInvestorSelect.innerHTML = '<option value="">اختر المستثمر (اختياري)</option>';
+            investors.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.textContent = item.name;
+                onBehalfInvestorSelect.appendChild(option);
+            });
+        }
     };
 
     const configureFormForMode = async (mode) => {
