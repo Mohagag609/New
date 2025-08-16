@@ -61,27 +61,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 previousSettlementSummaryDiv.innerHTML = '<p class="text-gray-500">لا توجد تسوية سابقة لهذا المشروع. هذه هي التسوية الأولى.</p>';
             }
 
-            // 3. Fetch all vouchers since the last settlement date
-            const allVouchers = await db.settlement_vouchers
+            // 3. Fetch all payment vouchers since the last settlement date
+            const paymentVouchers = await db.vouchers
                 .where('date').above(startDate.toISOString().split('T')[0])
-                .and(v => v.projectId === projectId)
+                .and(v => v.projectId === projectId && v.movementType === 'Payment' && v.paidByInvestorId)
                 .toArray();
 
-            const expenseVouchers = allVouchers.filter(v => v.type !== 'Settlement');
+            // Normalize the data for settlement processing.
+            // Note: The settlement system only cares about expenses paid by investors.
+            // Internal settlement transactions are now just part of the balance snapshot.
+            const expenseVouchers = paymentVouchers.map(v => ({
+                projectId: v.projectId,
+                date: v.date,
+                amount: v.credit, // For a payment voucher, the amount is in the credit field
+                paidByInvestorId: v.paidByInvestorId,
+                // These fields are for compatibility with detailed report logic
+                categoryId: v.accountId,
+                partyId: v.partyId,
+                notes: v.description,
+                type: 'Expense' // Explicitly mark as an expense
+            }));
             const totalPeriodExpenses = expenseVouchers.reduce((sum, v) => sum + v.amount, 0);
             totalExpensesSpan.textContent = formatCurrency(totalPeriodExpenses);
 
-            // 4. Calculate effective contribution for the current period
+            // 4. Calculate contribution for the current period from expenses
             const periodContribution = new Map();
             expenseVouchers.forEach(v => {
                 const currentPaid = periodContribution.get(v.paidByInvestorId) || 0;
                 periodContribution.set(v.paidByInvestorId, currentPaid + v.amount);
-            });
-            allVouchers.filter(v => v.type === 'Settlement').forEach(v => {
-                const debtorContribution = periodContribution.get(v.paidByInvestorId) || 0;
-                periodContribution.set(v.paidByInvestorId, debtorContribution + v.amount);
-                const creditorContribution = periodContribution.get(v.receivedByInvestorId) || 0;
-                periodContribution.set(v.receivedByInvestorId, creditorContribution - v.amount);
             });
 
             // Populate the "Investor Payments Report" (now shows PERIOD payments)
@@ -305,10 +312,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
-            // Fetch all vouchers since the last settlement date
-            const newVouchers = await db.settlement_vouchers
+            // Fetch all payment vouchers since the last settlement date
+            const paymentVouchers = await db.vouchers
                 .where('date').above(startDate.toISOString().split('T')[0])
-                .and(v => v.projectId === projectId)
+                .and(v => v.projectId === projectId && v.movementType === 'Payment' && v.paidByInvestorId)
                 .toArray();
 
             let reportHtml = `<h1 class="text-2xl font-bold text-center mb-4">تقرير الحركات التفصيلي لمشروع: ${projectName}</h1>`;
@@ -318,8 +325,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 reportHtml += `<div class="mb-8" style="page-break-after: always;">`;
                 reportHtml += `<h2 class="text-xl font-bold border-b-2 border-gray-300 pb-2 mb-4">المستثمر: ${investorName}</h2>`;
 
-                const relatedVouchers = newVouchers
-                    .filter(v => v.paidByInvestorId === investorId || v.receivedByInvestorId === investorId)
+                const relatedVouchers = paymentVouchers
+                    .filter(v => v.paidByInvestorId === investorId)
                     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
                 const prevBalance = previousBalances.get(investorId) || 0;
@@ -329,61 +336,50 @@ document.addEventListener('DOMContentLoaded', () => {
                         <tr>
                             <th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">التاريخ</th>
                             <th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">الحساب</th>
-                            <th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">الطرف</th>
+                            <th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">الطرف (المورد)</th>
                             <th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">البيان</th>
-                            <th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">مدفوعات (+)</th>
-                            <th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">مقبوضات (-)</th>
+                            <th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">المبلغ</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr class="bg-gray-50 font-bold">
-                            <td colspan="4" class="px-5 py-2 border-b text-right">رصيد سابق</td>
-                            <td colspan="2" class="px-5 py-2 border-b text-left">${formatCurrency(prevBalance)}</td>
+                            <td colspan="4" class="px-5 py-2 border-b text-right">رصيد المساهمة السابق</td>
+                            <td class="px-5 py-2 border-b text-left">${formatCurrency(prevBalance)}</td>
                         </tr>
                     `;
 
                 let totalPaid = 0;
-                let totalReceived = 0;
 
-                relatedVouchers.forEach(v => {
-                    let accountName = '', partyName = '', notes = v.notes || '', paidAmount = 0, receivedAmount = 0;
-                    if (v.type === 'Settlement') {
-                        accountName = 'تسوية مستثمرين';
-                        if (v.paidByInvestorId === investorId) {
-                            paidAmount = v.amount;
-                            partyName = `إلى: ${investorMap.get(v.receivedByInvestorId)}`;
-                        } else {
-                            receivedAmount = v.amount;
-                            partyName = `من: ${investorMap.get(v.paidByInvestorId)}`;
-                        }
-                    } else {
-                        paidAmount = v.amount;
-                        accountName = accountMap.get(v.categoryId) || 'غير معروف';
-                        partyName = v.partyId ? partyMap.get(v.partyId) || '' : '';
-                    }
-                    totalPaid += paidAmount;
-                    totalReceived += receivedAmount;
+                if (relatedVouchers.length === 0) {
+                    reportHtml += `<tr><td colspan="5" class="text-center p-4">لا توجد مصروفات جديدة في هذه الفترة.</td></tr>`;
+                } else {
+                    relatedVouchers.forEach(v => {
+                        const accountName = accountMap.get(v.accountId) || 'غير معروف';
+                        const partyName = v.partyId ? partyMap.get(v.partyId) || '' : '';
+                        const notes = v.description || '';
+                        const paidAmount = v.credit;
 
-                    reportHtml += `<tr>
-                        <td class="px-5 py-2 border-b">${v.date}</td>
-                        <td class="px-5 py-2 border-b">${accountName}</td>
-                        <td class="px-5 py-2 border-b">${partyName}</td>
-                        <td class="px-5 py-2 border-b">${notes}</td>
-                        <td class="px-5 py-2 border-b text-left">${paidAmount > 0 ? formatCurrency(paidAmount) : ''}</td>
-                        <td class="px-5 py-2 border-b text-left text-red-600">${receivedAmount > 0 ? formatCurrency(receivedAmount) : ''}</td>
-                    </tr>`;
-                });
+                        totalPaid += paidAmount;
+
+                        reportHtml += `<tr>
+                            <td class="px-5 py-2 border-b">${v.date}</td>
+                            <td class="px-5 py-2 border-b">${accountName}</td>
+                            <td class="px-5 py-2 border-b">${partyName}</td>
+                            <td class="px-5 py-2 border-b">${notes}</td>
+                            <td class="px-5 py-2 border-b text-left">${formatCurrency(paidAmount)}</td>
+                        </tr>`;
+                    });
+                }
 
                 reportHtml += `</tbody>
                     <tfoot>
                         <tr class="font-bold">
-                            <td colspan="4" class="px-5 py-2 border-t-2 text-right">إجمالي حركات الفترة</td>
+                            <td colspan="4" class="px-5 py-2 border-t-2 text-right">إجمالي مصروفات الفترة</td>
                             <td class="px-5 py-2 border-t-2 text-left">${formatCurrency(totalPaid)}</td>
-                            <td class="px-5 py-2 border-t-2 text-left text-red-600">${formatCurrency(totalReceived)}</td>
                         </tr>
                         <tr class="font-bold text-lg bg-gray-100">
-                            <td colspan="4" class="px-5 py-2 border-t-2 text-right">الرصيد النهائي</td>
-                            <td colspan="2" class="px-5 py-2 border-t-2 text-left">${formatCurrency(prevBalance + totalPaid - totalReceived)}</td>
+                            <td colspan="4" class="px-5 py-2 border-t-2 text-right">إجمالي المساهمة النهائي</td>
+                            <td class="px-5 py-2 border-t-2 text-left">${formatCurrency(prevBalance + totalPaid)}</td>
                         </tr>
                     </tfoot>
                 </table>`;
