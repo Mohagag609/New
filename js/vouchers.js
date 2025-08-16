@@ -81,8 +81,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const populateInvestorsDropdown = async () => {
         const settlementProjectId = Number(localStorage.getItem('currentSettlementProjectId'));
-        if (!settlementProjectId) return;
-        await populateSelect(onBehalfInvestorSelect, () => settlementDB.investors.where({ projectId: settlementProjectId }).toArray(), 'اختر المستثمر (اختياري)');
+        if (!settlementProjectId) {
+            onBehalfInvestorSelect.innerHTML = '<option value="">الرجاء تحديد مشروع أولاً</option>';
+            return;
+        };
+
+        const getProjectInvestors = async () => {
+            // First, find which investors are linked to the current project via the join table.
+            const links = await settlementDb.project_investors.where({ projectId: settlementProjectId }).toArray();
+            const investorIds = links.map(link => link.investorId);
+
+            if (investorIds.length === 0) {
+                return []; // No investors linked to this project
+            }
+
+            // Now, fetch the actual investor details for the linked investors.
+            return settlementDb.investors.where('id').anyOf(investorIds).toArray();
+        };
+
+        await populateSelect(onBehalfInvestorSelect, getProjectInvestors, 'اختر المستثمر (اختياري)');
     };
 
 
@@ -313,7 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         return alert('خطأ: لم يتم تحديد مشروع تسوية حالي. لا يمكن حفظ المصروف.');
                     }
 
-                    await Dexie.transaction('rw', db.vouchers, settlementDB.settlement_vouchers, async () => {
+                    await Dexie.transaction('rw', db.vouchers, settlementDb.settlement_vouchers, async () => {
                         // 1. Create Treasury Voucher
                         const lastVoucher = await db.vouchers.orderBy('id').last();
                         let lastNo = 0;
