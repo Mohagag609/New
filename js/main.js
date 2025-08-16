@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     projectSelector.addEventListener('change', () => {
         const newProjectId = projectSelector.value;
         localStorage.setItem('currentProjectId', newProjectId);
+        localStorage.setItem('currentSettlementProjectId', newProjectId); // Ensure both IDs are set
         // Reload the app to apply the new project context everywhere
         window.location.reload();
     });
