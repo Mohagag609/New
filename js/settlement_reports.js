@@ -225,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert("لا يوجد مستثمرون مرتبطون بهذا المشروع.");
                 return;
             }
-            const allInvestors = await db.investors.toArray(); // Get all investors for names
+            const allInvestors = await db.investors.toArray();
             const investorMap = new Map(allInvestors.map(i => [i.id, i.name]));
             const accountMap = new Map(accounts.map(a => [a.id, a.name]));
             const partyMap = new Map(parties.map(p => [p.id, p.name]));
@@ -247,10 +247,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     reportHtml += `<table class="min-w-full leading-normal" style="width: 100%; border-collapse: collapse;">
                         <thead>
                             <tr>
-                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">التاريخ</th>
-                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">البيان</th>
-                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">مدفوعات (+)</th>
-                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">مقبوضات (-)</th>
+                                <th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">التاريخ</th>
+                                <th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">الحساب</th>
+                                <th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">الطرف</th>
+                                <th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">البيان</th>
+                                <th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">مدفوعات (+)</th>
+                                <th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">مقبوضات (-)</th>
                             </tr>
                         </thead>
                         <tbody>`;
@@ -259,23 +261,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     let totalReceived = 0;
 
                     relatedVouchers.forEach(v => {
-                        let description = '';
+                        let accountName = '';
+                        let partyName = '';
+                        let notes = v.notes || '';
                         let paidAmount = 0;
                         let receivedAmount = 0;
 
                         if (v.type === 'Settlement') {
+                            accountName = 'تسوية مستثمرين';
                             if (v.paidByInvestorId === investorId) { // This investor paid
                                 paidAmount = v.amount;
-                                description = `تسوية مدفوعة إلى: ${investorMap.get(v.receivedByInvestorId)}`;
+                                partyName = `إلى: ${investorMap.get(v.receivedByInvestorId)}`;
                             } else { // This investor received
                                 receivedAmount = v.amount;
-                                description = `تسوية مقبوضة من: ${investorMap.get(v.paidByInvestorId)}`;
+                                partyName = `من: ${investorMap.get(v.paidByInvestorId)}`;
                             }
                         } else { // Expense voucher
                             paidAmount = v.amount;
-                            const accountName = accountMap.get(v.categoryId) || 'غير معروف';
-                            const partyName = v.partyId ? partyMap.get(v.partyId) || '' : '';
-                            description = `مصروف: ${accountName} ${partyName ? `(${partyName})` : ''} - ${v.notes || ''}`;
+                            accountName = accountMap.get(v.categoryId) || 'غير معروف';
+                            partyName = v.partyId ? partyMap.get(v.partyId) || '' : '';
                         }
 
                         totalPaid += paidAmount;
@@ -283,7 +287,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         reportHtml += `<tr>
                             <td class="px-5 py-2 border-b">${v.date}</td>
-                            <td class="px-5 py-2 border-b">${description}</td>
+                            <td class="px-5 py-2 border-b">${accountName}</td>
+                            <td class="px-5 py-2 border-b">${partyName}</td>
+                            <td class="px-5 py-2 border-b">${notes}</td>
                             <td class="px-5 py-2 border-b text-left">${paidAmount > 0 ? formatCurrency(paidAmount) : ''}</td>
                             <td class="px-5 py-2 border-b text-left text-red-600">${receivedAmount > 0 ? formatCurrency(receivedAmount) : ''}</td>
                         </tr>`;
@@ -292,12 +298,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     reportHtml += `</tbody>
                         <tfoot>
                             <tr class="font-bold">
-                                <td colspan="2" class="px-5 py-2 border-t-2 text-right">الإجماليات</td>
+                                <td colspan="4" class="px-5 py-2 border-t-2 text-right">الإجماليات</td>
                                 <td class="px-5 py-2 border-t-2 text-left">${formatCurrency(totalPaid)}</td>
                                 <td class="px-5 py-2 border-t-2 text-left text-red-600">${formatCurrency(totalReceived)}</td>
                             </tr>
                             <tr class="font-bold text-lg">
-                                <td colspan="2" class="px-5 py-2 border-t-2 text-right">صافي المساهمة</td>
+                                <td colspan="4" class="px-5 py-2 border-t-2 text-right">صافي المساهمة</td>
                                 <td colspan="2" class="px-5 py-2 border-t-2 text-left">${formatCurrency(totalPaid - totalReceived)}</td>
                             </tr>
                         </tfoot>
