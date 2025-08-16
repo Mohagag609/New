@@ -136,10 +136,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // This is the robust way to clear all tables in the database
-            await db.transaction('rw', db.tables.map(t => t.name), async () => {
-                await Promise.all(db.tables.map(table => table.clear()));
+            // Explicitly list all tables to ensure everything is cleared.
+            const allTableNames = [
+                'cashboxes', 'parties', 'accounts', 'vouchers',
+                'projects', 'investors', 'project_investors',
+                'settlement_vouchers', 'expense_categories', 'adjustments'
+            ];
+            await db.transaction('rw', allTableNames, async () => {
+                await Promise.all(allTableNames.map(name => db.table(name).clear()));
             });
+
             localStorage.clear(); // Also clear settings like company name and currency
             alert('تم مسح جميع البيانات بنجاح. سيتم إعادة تحميل التطبيق.');
             window.location.reload();
