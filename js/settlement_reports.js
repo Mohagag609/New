@@ -160,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await db.settlement_vouchers.bulkAdd(newVouchers);
             alert('تم تنفيذ التسوية بنجاح!');
             generateReports(); // Refresh the report view
+            alert('تم تحديث التقرير. يجب أن تكون الأرصدة الآن صفراً وزر التنفيذ معطلاً.');
 
         } catch (error) {
             console.error('Failed to execute settlement:', error);
