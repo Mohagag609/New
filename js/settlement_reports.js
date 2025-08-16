@@ -25,41 +25,46 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            const [vouchers, projectInvestors] = await Promise.all([
+            const [allVouchers, projectInvestors] = await Promise.all([
                 db.settlement_vouchers.where({ projectId }).toArray(),
                 db.project_investors.where({ projectId }).toArray()
             ]);
 
-            const investorIdsFromVouchers = vouchers.map(v => v.paidByInvestorId);
+            // Filter out settlement transactions from financial calculations
+            const expenseVouchers = allVouchers.filter(v => v.type !== 'Settlement');
+
+            const investorIdsFromVouchers = expenseVouchers.map(v => v.paidByInvestorId);
             const investorIdsFromProject = projectInvestors.map(pi => pi.investorId);
             const allUniqueInvestorIds = [...new Set([...investorIdsFromVouchers, ...investorIdsFromProject])];
             const allInvestors = await db.investors.bulkGet(allUniqueInvestorIds);
             const investorMap = new Map(allInvestors.filter(i => i).map(i => [i.id, i.name]));
 
-            const totalExpenses = vouchers.filter(v => v.type !== 'Settlement').reduce((sum, v) => sum + v.amount, 0);
+            const totalExpenses = expenseVouchers.reduce((sum, v) => sum + v.amount, 0);
             totalExpensesSpan.textContent = formatCurrency(totalExpenses);
 
             const paidByInvestor = new Map();
-            vouchers.filter(v => v.type !== 'Settlement').forEach(v => {
+            expenseVouchers.forEach(v => {
                 const currentPaid = paidByInvestor.get(v.paidByInvestorId) || 0;
                 paidByInvestor.set(v.paidByInvestorId, currentPaid + v.amount);
             });
 
             investorExpensesTbody.innerHTML = '';
-            for (const [investorId, totalPaid] of paidByInvestor.entries()) {
+            // Use allUniqueInvestorIds to ensure all investors in the project are listed, even if they paid nothing.
+            allUniqueInvestorIds.forEach(investorId => {
+                const totalPaid = paidByInvestor.get(investorId) || 0;
                 investorExpensesTbody.innerHTML += `
                     <tr>
                         <td class="px-5 py-3">${investorMap.get(investorId) || 'غير معروف'}</td>
                         <td class="px-5 py-3">${formatCurrency(totalPaid)}</td>
                     </tr>
                 `;
-            }
+            });
 
             const totalShares = projectInvestors.reduce((sum, pi) => sum + (pi.share || 0), 0);
             const useEqualSplit = (totalShares < 0.99 || totalShares > 1.01);
 
             projectInvestors.forEach(pi => {
-                const settlementRatio = useEqualSplit ? (1 / projectInvestors.length) : (pi.share || 0);
+                const settlementRatio = useEqualSplit && projectInvestors.length > 0 ? (1 / projectInvestors.length) : (pi.share || 0);
                 const paid = paidByInvestor.get(pi.investorId) || 0;
                 const fairShare = totalExpenses * settlementRatio;
                 const balance = paid - fairShare;
