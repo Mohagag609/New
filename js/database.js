@@ -2,22 +2,22 @@ const db = new Dexie('TreasuryDB');
 
 // This is the final, unified, and correct schema.
 // All previous versions are deprecated. A full data clear is required by the user.
-db.version(6).stores({
+db.version(7).stores({
     // Global Tables
-    cashboxes: '++id, &name, type', // Added type index to query for Main/Sub
-    parties: '++id, &[type+name]', // Customers & Suppliers
+    cashboxes: '++id, &name, type',
+    parties: '++id, &[type+name]',
     investors: '++id, &name, isActive',
 
     // Project-Specific Tables
     projects: '++id, &name, status',
-    accounts: '++id, &[type+name], projectId', // Expense/Revenue accounts are per-project
+    accounts: '++id, &[type+name], projectId',
 
     // Link Tables
     project_investors: '++id, &[projectId+investorId], projectId, investorId',
 
     // Transactional Tables
     vouchers: '++id, &voucherNo, [cashboxId+date], transferId, partyId, accountId, movementType, projectId, date',
-    settlement_vouchers: '++id, projectId, date, accountId, paidByInvestorId, receivedByInvestorId, partyId',
+    settlement_vouchers: '++id, projectId, date, accountId, paidByInvestorId, receivedByInvestorId, partyId, type', // Added type
     adjustments: '++id, projectId, date'
 });
 
