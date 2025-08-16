@@ -68,11 +68,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const populateAllDropdowns = () => {
-        const query = { projectId: currentProjectId };
-        populateSelect(cashboxSelect, () => db.cashboxes.where(query).toArray(), 'اختر الخزنة');
-        populateSelect(fromCashboxSelect, () => db.cashboxes.where(query).toArray(), 'اختر الخزنة');
-        populateSelect(toCashboxSelect, () => db.cashboxes.where(query).toArray(), 'اختر الخزنة');
-        populateSelect(partySelect, () => db.parties.where(query).toArray(), 'اختر الطرف (اختياري)');
+        // Cashboxes and Parties are now global, so we don't filter by projectId.
+        populateSelect(cashboxSelect, () => db.cashboxes.toArray(), 'اختر الخزنة');
+        populateSelect(fromCashboxSelect, () => db.cashboxes.toArray(), 'اختر الخزنة');
+        populateSelect(toCashboxSelect, () => db.cashboxes.toArray(), 'اختر الخزنة');
+        populateSelect(partySelect, () => db.parties.toArray(), 'اختر الطرف (اختياري)');
     };
 
     const populateAccountsDropdown = async (type) => {
@@ -195,8 +195,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const [cashboxes, parties] = await Promise.all([
-                db.cashboxes.where({ projectId: currentProjectId }).toArray(),
-                db.parties.where({ projectId: currentProjectId }).toArray()
+                db.cashboxes.toArray(),
+                db.parties.toArray()
             ]);
             const cashboxMap = new Map(cashboxes.map(c => [c.id, c.name]));
 

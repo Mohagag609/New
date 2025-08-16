@@ -12,10 +12,10 @@ db.version(1).stores({
 // This version merges the tables from the old SettlementDB into the main TreasuryDB
 // to create a single source of truth for all application data.
 db.version(2).stores({
-    // Core Treasury Tables (upgraded with projectId)
-    cashboxes: '++id, &name, projectId',
-    parties: '++id, &[type+name], projectId',
-    accounts: '++id, &[type+name], projectId',
+    // Core Treasury Tables (upgraded with projectId where applicable)
+    cashboxes: '++id, &name', // Made global
+    parties: '++id, &[type+name]', // Made global
+    accounts: '++id, &[type+name], projectId', // Accounts remain project-specific
     vouchers: '++id, &voucherNo, [cashboxId+date], transferId, partyId, accountId, movementType, projectId, date',
 
     // Tables from the former SettlementDB

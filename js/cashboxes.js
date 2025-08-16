@@ -2,12 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const cashboxPage = document.getElementById('page-cashboxes');
     if (!cashboxPage) return;
 
-    const currentProjectId = Number(localStorage.getItem('currentProjectId'));
-    if (!currentProjectId) {
-        // Hide the 'Add' button if no project is selected
-        document.getElementById('add-cashbox-btn').style.display = 'none';
-        return; // Don't initialize the page if no project is active
-    }
+    // Cashboxes are now global, so no need to check for currentProjectId to show the page content.
 
     const addCashboxBtn = document.getElementById('add-cashbox-btn');
     const printBtn = document.getElementById('print-cashboxes-btn');
@@ -51,7 +46,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const populateParentCashboxSelect = async () => {
         try {
-            const mainCashboxes = await db.cashboxes.where({ type: 'Main', projectId: currentProjectId }).toArray();
+            // Fetch all main cashboxes, as they are now global
+            const mainCashboxes = await db.cashboxes.where({ type: 'Main' }).toArray();
             parentCashboxSelect.innerHTML = '<option value="">اختر الخزنة الرئيسية</option>';
             mainCashboxes.forEach(cb => {
                 const option = document.createElement('option');
@@ -66,7 +62,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderCashboxes = async () => {
         try {
-            const allCashboxes = await db.cashboxes.where({ projectId: currentProjectId }).toArray();
+            // Fetch all cashboxes, as they are now global
+            const allCashboxes = await db.cashboxes.toArray();
             const cashboxNameMap = allCashboxes.reduce((map, cb) => {
                 map[cb.id] = cb.name;
                 return map;
@@ -108,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
             openingBalance: Number(openingBalanceInput.value),
             parentId: cashboxTypeSelect.value === 'Sub' ? Number(parentCashboxSelect.value) : null,
             isActive: true, // Default to active on creation
-            projectId: currentProjectId
+            // projectId has been removed
         };
 
         if (cashboxData.type === 'Sub' && !cashboxData.parentId) {
@@ -162,11 +159,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (target.classList.contains('toggle-active-btn')) {
-            // For now, we will just toggle the status.
-            // In the future, we need to check if there are vouchers associated.
             const cashbox = await db.cashboxes.get(id);
             if(cashbox) {
-                // A real app should ask for confirmation
                 await db.cashboxes.update(id, { isActive: !cashbox.isActive });
                 renderCashboxes();
             }
