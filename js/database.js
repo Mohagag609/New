@@ -2,9 +2,9 @@ const db = new Dexie('TreasuryDB');
 
 // This is the final, unified, and correct schema.
 // All previous versions are deprecated. A full data clear is required by the user.
-db.version(5).stores({
+db.version(6).stores({
     // Global Tables
-    cashboxes: '++id, &name',
+    cashboxes: '++id, &name, type', // Added type index to query for Main/Sub
     parties: '++id, &[type+name]', // Customers & Suppliers
     investors: '++id, &name, isActive',
 
