@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- UI Configuration ---
-    const configureFormForMode = (mode) => {
+    const configureFormForMode = async (mode) => {
         currentVoucherMode = mode;
         standardFields.classList.remove('hidden');
         transferFields.classList.add('hidden');
@@ -124,15 +124,16 @@ document.addEventListener('DOMContentLoaded', () => {
         debitInput.disabled = false;
         creditInput.disabled = false;
 
+        let title = '';
         switch (mode) {
             case 'Receipt':
-                modalTitle.textContent = 'إنشاء سند قبض';
+                title = 'إنشاء سند قبض';
                 creditInput.value = 0;
                 creditInput.disabled = true;
                 populateAccountsDropdown('Revenue');
                 break;
             case 'Payment':
-                modalTitle.textContent = 'إنشاء سند صرف';
+                title = 'إنشاء سند صرف';
                 debitInput.value = 0;
                 debitInput.disabled = true;
                 populateAccountsDropdown('Expense');
@@ -140,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 onBehalfInvestorContainer.classList.remove('hidden'); // Show for Payment
                 break;
             case 'Transfer':
-                modalTitle.textContent = 'إنشاء تحويل مالي';
+                title = 'إنشاء تحويل مالي';
                 standardFields.classList.add('hidden');
                 transferFields.classList.remove('hidden');
                 // For transfer, user enters one amount, which becomes credit for one and debit for other
@@ -148,6 +149,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 debitInput.previousElementSibling.textContent = 'المبلغ';
                 break;
         }
+
+        if (mode === 'Receipt' || mode === 'Payment') {
+            const projectId = Number(localStorage.getItem('currentProjectId'));
+            if (projectId) {
+                try {
+                    const project = await db.projects.get(projectId);
+                    if (project) {
+                        title += ` (مشروع: ${project.name})`;
+                    }
+                } catch (error) {
+                    console.error("Could not fetch project name for modal title", error);
+                }
+            }
+        }
+        modalTitle.textContent = title;
     };
 
     // --- Modal Management ---
@@ -173,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // New voucher
             voucherNoInput.value = '';
             voucherNoInput.placeholder = 'سيتم إنشاؤه تلقائيًا';
-            configureFormForMode(mode);
+            await configureFormForMode(mode);
         }
         modal.classList.remove('hidden');
     };
