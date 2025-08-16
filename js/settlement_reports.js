@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!page) return;
 
     const projectSelect = document.getElementById('settlement-report-project-select');
+    const printBtn = document.getElementById('print-settlement-report-btn');
     const reportContent = document.getElementById('settlement-report-content');
 
     const investorExpensesTbody = document.getElementById('investor-expenses-report-body');
@@ -143,6 +144,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     projectSelect.addEventListener('change', generateReports);
+    printBtn.addEventListener('click', () => {
+        const projectName = projectSelect.options[projectSelect.selectedIndex].text;
+        printContent('settlement-report-content', `تقارير تسوية - ${projectName}`);
+    });
 
     document.addEventListener('show', (e) => {
         if (e.detail.pageId === 'page-settlement-reports') {
