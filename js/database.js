@@ -1,43 +1,23 @@
 const db = new Dexie('TreasuryDB');
 
-// Version 1: Initial Schema
-db.version(1).stores({
+// This is the final, unified, and correct schema.
+// All previous versions are deprecated. A full data clear is required by the user.
+db.version(5).stores({
+    // Global Tables
     cashboxes: '++id, &name',
-    parties: '++id, &[type+name]',
-    accounts: '++id, &[type+name]',
-    vouchers: '++id, &voucherNo, [cashboxId+date], transferId, partyId, accountId, movementType',
-});
-
-// Version 2: Unified Schema
-// This version merges the tables from the old SettlementDB into the main TreasuryDB
-// to create a single source of truth for all application data.
-db.version(2).stores({
-    // Core Treasury Tables (upgraded with projectId where applicable)
-    cashboxes: '++id, &name', // Made global
-    parties: '++id, &[type+name]', // Made global
-    accounts: '++id, &[type+name], projectId', // Accounts remain project-specific
-    vouchers: '++id, &voucherNo, [cashboxId+date], transferId, partyId, accountId, movementType, projectId, date',
-
-    // Tables from the former SettlementDB
-    projects: '++id, &name, status',
+    parties: '++id, &[type+name]', // Customers & Suppliers
     investors: '++id, &name, isActive',
-    project_investors: '++id, &[projectId+investorId], projectId, investorId',
-    settlement_vouchers: '++id, projectId, date, categoryId, paidByInvestorId, receivedByInvestorId',
-    expense_categories: '++id, &name',
-    adjustments: '++id, projectId, date'
-});
 
-// Version 4: Add partyId to settlement vouchers to track suppliers.
-db.version(4).stores({
-    cashboxes: '++id, &name',
-    parties: '++id, &[type+name]',
-    accounts: '++id, &[type+name], projectId',
-    vouchers: '++id, &voucherNo, [cashboxId+date], transferId, partyId, accountId, movementType, projectId, date',
+    // Project-Specific Tables
     projects: '++id, &name, status',
-    investors: '++id, &name, isActive',
+    accounts: '++id, &[type+name], projectId', // Expense/Revenue accounts are per-project
+
+    // Link Tables
     project_investors: '++id, &[projectId+investorId], projectId, investorId',
-    settlement_vouchers: '++id, projectId, date, categoryId, paidByInvestorId, receivedByInvestorId, partyId', // partyId added
-    expense_categories: '++id, &name',
+
+    // Transactional Tables
+    vouchers: '++id, &voucherNo, [cashboxId+date], transferId, partyId, accountId, movementType, projectId, date',
+    settlement_vouchers: '++id, projectId, date, accountId, paidByInvestorId, receivedByInvestorId, partyId',
     adjustments: '++id, projectId, date'
 });
 
