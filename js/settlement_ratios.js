@@ -91,12 +91,17 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         });
 
+        if (updates.length === 0) {
+            alert('لا توجد نسب لتحديثها.');
+            return;
+        }
+
         try {
             await db.project_investors.bulkUpdate(updates);
             alert('تم حفظ النسب بنجاح!');
         } catch (error) {
             console.error('Failed to save ratios:', error);
-            alert('حدث خطأ أثناء حفظ النسب.');
+            alert(`حدث خطأ أثناء حفظ النسب: ${error.stack}`);
         }
     };
 
