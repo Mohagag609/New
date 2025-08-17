@@ -20,7 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
             tableBody.innerHTML = '';
             settlements.forEach(s => {
                 const row = document.createElement('tr');
-                // The new table structure is simpler
                 row.innerHTML = `
                     <td class="px-5 py-3 border-b">${s.settlementDate}</td>
                     <td class="px-5 py-3 border-b">${projectMap.get(s.projectId) || 'غير معروف'}</td>

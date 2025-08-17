@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!page) return;
 
     // --- DOM Elements ---
-    const addBtn = document.getElementById('add-project-expense-btn');
+    const addExpenseBtn = document.getElementById('add-project-expense-btn');
     const modal = document.getElementById('project-expense-modal');
     const cancelBtn = document.getElementById('cancel-pe-btn');
     const form = document.getElementById('project-expense-form');
@@ -29,22 +29,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const openModal = async (type = 'expense') => {
+    const openModal = async () => {
         form.reset();
-
-        const modalTitle = document.getElementById('project-expense-modal-title');
-        // Find the account select's parent div to hide it.
-        const accountRow = accountSelect.closest('.grid > div');
-
-        if (type === 'expense') {
-            modalTitle.textContent = 'إضافة مصروف مشروع';
-            if (accountRow) accountRow.classList.remove('hidden');
-        } else {
-            modalTitle.textContent = 'إضافة سند قبض من مستثمر';
-            if (accountRow) accountRow.classList.add('hidden');
-        }
-
-        form.dataset.type = type;
 
         await Promise.all([
             populateSelect(projectSelect, () => db.projects.toArray()),
@@ -105,62 +91,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const handleFormSubmit = async (event) => {
         event.preventDefault();
-        const type = form.dataset.type || 'expense';
-
-        const baseData = {
-            voucherNo: `PROJ-${type.toUpperCase()}-${Date.now()}`,
+        const voucherData = {
+            voucherNo: `PROJ-EXP-${Date.now()}`,
             projectId: Number(projectSelect.value),
             date: dateInput.value,
             paidByInvestorId: Number(investorSelect.value),
+            accountId: Number(accountSelect.value),
+            debit: Number(amountInput.value),
+            credit: 0,
             description: notesInput.value.trim(),
+            movementType: 'Project Expense',
             cashboxId: 0,
         };
 
-        let voucherData;
-        if (type === 'expense') {
-            voucherData = {
-                ...baseData,
-                accountId: Number(accountSelect.value),
-                debit: Number(amountInput.value),
-                credit: 0,
-                movementType: 'Project Expense',
-            };
-            if (!voucherData.accountId || !voucherData.debit) {
-                return alert('الرجاء ملء جميع الحقول المطلوبة للمصروف.');
-            }
-        } else { // Receipt
-            voucherData = {
-                ...baseData,
-                accountId: 0, // No specific expense account for a receipt
-                debit: 0,
-                credit: Number(amountInput.value),
-                movementType: 'Investor Receipt',
-            };
-            if (!voucherData.credit) {
-                return alert('الرجاء إدخال مبلغ صحيح للإيصال.');
-            }
-        }
-
-        if (!voucherData.projectId || !voucherData.paidByInvestorId) {
-            return alert('الرجاء اختيار مشروع ومستثمر.');
+        if (!voucherData.projectId || !voucherData.paidByInvestorId || !voucherData.accountId || !voucherData.debit) {
+            alert('الرجاء ملء جميع الحقول المطلوبة.');
+            return;
         }
 
         try {
             await db.vouchers.add(voucherData);
-            alert('تم حفظ السند بنجاح.');
+            alert('تم حفظ سند الصرف بنجاح.');
             closeModal();
             renderVouchers();
         } catch (error) {
-            console.error('Failed to save project voucher:', error);
+            console.error('Failed to save project expense voucher:', error);
             alert('حدث خطأ أثناء حفظ السند.');
         }
     };
 
-    const addExpenseBtn = document.getElementById('add-project-expense-btn');
-    const addReceiptBtn = document.getElementById('add-project-receipt-btn');
-
-    addExpenseBtn.addEventListener('click', () => openModal('expense'));
-    addReceiptBtn.addEventListener('click', () => openModal('receipt'));
+    addExpenseBtn.addEventListener('click', () => openModal());
     cancelBtn.addEventListener('click', closeModal);
     form.addEventListener('submit', handleFormSubmit);
 

@@ -1,22 +1,691 @@
-<<<<<<< SEARCH
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام الخزينة الاحترافي</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/dexie@3/dist/dexie.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Cairo', 'sans-serif'],
+                    },
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-gray-100">
+    <div id="app" class="flex h-screen bg-gray-200 font-sans">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-64 bg-gray-800 text-white p-4 flex flex-col">
+            <h1 class="text-2xl font-bold mb-2 text-center border-b border-gray-700 pb-2">نظام الخزينة</h1>
+            <div class="p-2">
+                <label for="global-project-selector" class="text-sm font-semibold mb-1 block">المشروع الحالي:</label>
+                <select id="global-project-selector" class="w-full p-1 rounded bg-gray-700 text-white border border-gray-600"></select>
+            </div>
+            <nav id="main-nav" class="mt-4 flex-grow">
+                <div class="px-4 py-2 text-xs font-semibold text-gray-400 uppercase">نظام الخزينة</div>
+                <a href="#dashboard" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700 bg-gray-700">لوحة التحكم</a>
+                <a href="#cashboxes" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">الخزن</a>
+                <a href="#parties" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">العملاء والموردين</a>
+                <a href="#accounts" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">أنواع الحسابات</a>
+                <a href="#vouchers" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">السندات (الخزينة)</a>
+                <a href="#reports" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">تقارير الخزينة</a>
+
+                <div class="mt-4 px-4 py-2 text-xs font-semibold text-gray-400 uppercase">نظام تسوية المشروعات</div>
+                <a href="#projects" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">إدارة المشروعات</a>
+                <a href="#investors" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">إدارة المستثمرين</a>
+                <a href="#settlement-ratios" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">إعداد نسب التسوية</a>
                 <a href="#settlement-vouchers" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">إدخال المصروفات</a>
-...
-            <div id="page-settlement-vouchers" class="hidden">
+                <a href="#settlement-reports" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">تقارير التسوية</a>
+                <a href="#settlements" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">التسويات المنفذة</a>
+
+                <div class="mt-auto">
+                    <div class="px-4 py-2 text-xs font-semibold text-gray-400 uppercase">الإعدادات العامة</div>
+                     <a href="#settings" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">الإعدادات</a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main id="main-content" class="flex-1 p-10">
+            <!-- Page content will be loaded here -->
+            <div id="page-dashboard">
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-3xl font-bold">إدخال مصروفات المشروعات</h2>
-                    <button id="add-settlement-voucher-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                        + سند صرف جديد
+                    <h2 class="text-3xl font-bold">لوحة التحكم</h2>
+                    <div class="flex items-center space-x-4 space-x-reverse no-print">
+                        <div>
+                            <label for="dash-from-date" class="block text-sm font-medium text-gray-700 text-right">من</label>
+                            <input type="date" id="dash-from-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div>
+                            <label for="dash-to-date" class="block text-sm font-medium text-gray-700 text-right">إلى</label>
+                            <input type="date" id="dash-to-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div class="self-end">
+                             <button id="dash-refresh-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">تحديث</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Project-Investors Linking Modal -->
+                <div id="project-investors-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+                    <div class="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900">إدارة مستثمري المشروع: <span id="proj-inv-modal-title" class="font-bold"></span></h3>
+                        <div class="mt-4">
+                            <form id="link-investor-form" class="flex items-end space-x-2 space-x-reverse">
+                                <div class="flex-grow">
+                                    <label for="investor-select" class="block text-sm font-medium text-gray-700">اختر مستثمر</label>
+                                    <select id="investor-select" class="mt-1 block w-full border-gray-300 rounded-md"></select>
+                                </div>
+                                <div>
+                                    <label for="investor-share" class="block text-sm font-medium text-gray-700">الحصة/المبلغ</label>
+                                    <input type="number" id="investor-share" class="mt-1 block w-full border-gray-300 rounded-md" placeholder="e.g., 10000">
+                                </div>
+                                <button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded">إضافة</button>
+                            </form>
+                        </div>
+                        <div class="mt-4">
+                            <h4 class="font-semibold">المستثمرون الحاليون في المشروع:</h4>
+                            <ul id="project-investors-list" class="mt-2 list-disc pr-5"></ul>
+                        </div>
+                        <div class="mt-6 text-left">
+                            <button id="close-proj-inv-modal-btn" class="bg-gray-500 text-white py-2 px-4 rounded">إغلاق</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-lg font-semibold text-gray-500">إجمالي الأرصدة الحالية</h3>
+                        <p id="total-balance-card" class="text-3xl font-bold mt-2 text-blue-600">0.00</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-lg font-semibold text-gray-500">إجمالي الإيرادات (الفترة)</h3>
+                        <p id="total-revenue-card" class="text-3xl font-bold mt-2 text-green-600">0.00</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-lg font-semibold text-gray-500">إجمالي المصروفات (الفترة)</h3>
+                        <p id="total-expenses-card" class="text-3xl font-bold mt-2 text-red-600">0.00</p>
+                    </div>
+                     <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-lg font-semibold text-gray-500">صافي الدخل (الفترة)</h3>
+                        <p id="net-income-card" class="text-3xl font-bold mt-2 text-gray-800">0.00</p>
+                    </div>
+                </div>
+
+                <!-- Recent Transactions -->
+                <div class="mt-8">
+                    <h3 class="text-2xl font-bold mb-4">أحدث الحركات</h3>
+                    <div class="bg-white shadow-md rounded my-6">
+                         <table class="min-w-full leading-normal">
+                            <thead>
+                                <tr>
+                                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">رقم السند</th>
+                                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">التاريخ</th>
+                                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">البيان</th>
+                                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">المبلغ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recent-vouchers-table-body">
+                                <!-- Recent vouchers will be listed here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Other pages will be hidden by default -->
+            <div id="page-cashboxes" class="hidden">
+                <div class="flex justify-between items-center mb-6 no-print">
+                    <h2 class="text-3xl font-bold">إدارة الخزن</h2>
+                    <div class="space-x-2 space-x-reverse">
+                        <button id="print-cashboxes-btn" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">طباعة</button>
+                        <button id="add-cashbox-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                            إضافة خزنة جديدة
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Cashboxes Table -->
+                <div class="bg-white shadow-md rounded my-6">
+                    <table class="min-w-full leading-normal">
+                        <thead>
+                            <tr>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">الاسم</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">النوع</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">الرصيد الافتتاحي</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">الحالة</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cashboxes-table-body">
+                            <!-- Rows will be inserted here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Add/Edit Cashbox Modal -->
+                <div id="cashbox-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+                    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                        <div class="mt-3 text-center">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">إضافة خزنة</h3>
+                            <form id="cashbox-form" class="mt-2 space-y-4">
+                                <input type="hidden" id="cashbox-id">
+                                <div>
+                                    <label for="cashbox-name" class="block text-sm font-medium text-gray-700 text-right">اسم الخزنة</label>
+                                    <input type="text" id="cashbox-name" name="name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                                </div>
+                                <div>
+                                    <label for="cashbox-type" class="block text-sm font-medium text-gray-700 text-right">النوع</label>
+                                    <select id="cashbox-type" name="type" class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                                        <option value="Main">رئيسية</option>
+                                        <option value="Sub">فرعية</option>
+                                    </select>
+                                </div>
+                                <div id="parent-cashbox-container" class="hidden">
+                                    <label for="parent-cashbox-id" class="block text-sm font-medium text-gray-700 text-right">الخزنة الرئيسية</label>
+                                    <select id="parent-cashbox-id" name="parentId" class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                                        <!-- Options will be populated by JavaScript -->
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="opening-balance" class="block text-sm font-medium text-gray-700 text-right">الرصيد الافتتاحي</label>
+                                    <input type="number" id="opening-balance" name="openingBalance" value="0" min="0" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                                </div>
+                                <div class="items-center px-4 py-3">
+                                    <button id="save-cashbox-btn" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-300">
+                                        حفظ
+                                    </button>
+                                </div>
+                            </form>
+                            <div class="items-center px-4 py-3">
+                                <button id="cancel-btn" class="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300">
+                                    إلغاء
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div id="page-parties" class="hidden">
+                <div class="flex justify-between items-center mb-6 no-print">
+                    <h2 class="text-3xl font-bold">إدارة العملاء والموردين</h2>
+                    <div class="space-x-2 space-x-reverse">
+                        <button id="print-parties-btn" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">طباعة</button>
+                        <button id="add-party-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                            إضافة طرف جديد
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Parties Table -->
+                <div class="bg-white shadow-md rounded my-6">
+                    <table class="min-w-full leading-normal">
+                        <thead>
+                            <tr>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">الاسم</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">النوع</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">الهاتف</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">الحالة</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="parties-table-body">
+                            <!-- Rows will be inserted here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Add/Edit Party Modal -->
+                <div id="party-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+                    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                        <div class="mt-3 text-center">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="party-modal-title">إضافة طرف</h3>
+                            <form id="party-form" class="mt-2 space-y-4">
+                                <input type="hidden" id="party-id">
+                                <div>
+                                    <label for="party-name" class="block text-sm font-medium text-gray-700 text-right">الاسم</label>
+                                    <input type="text" id="party-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                                </div>
+                                <div>
+                                    <label for="party-type" class="block text-sm font-medium text-gray-700 text-right">النوع</label>
+                                    <select id="party-type" class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                                        <option value="Customer">عميل</option>
+                                        <option value="Supplier">مورد</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="party-phone" class="block text-sm font-medium text-gray-700 text-right">الهاتف</label>
+                                    <input type="text" id="party-phone" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                                </div>
+                                <div>
+                                    <label for="party-notes" class="block text-sm font-medium text-gray-700 text-right">ملاحظات</label>
+                                    <textarea id="party-notes" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                                </div>
+                                <div class="items-center px-4 py-3">
+                                    <button id="save-party-btn" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-300">
+                                        حفظ
+                                    </button>
+                                </div>
+                            </form>
+                            <div class="items-center px-4 py-3">
+                                <button id="cancel-party-btn" class="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300">
+                                    إلغاء
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="page-accounts" class="hidden">
+                <div class="flex justify-between items-center mb-6 no-print">
+                    <h2 class="text-3xl font-bold">إدارة أنواع الحسابات</h2>
+                    <div class="space-x-2 space-x-reverse">
+                        <button id="print-accounts-btn" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">طباعة</button>
+                        <button id="add-account-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                            إضافة حساب جديد
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Accounts Table -->
+                <div class="bg-white shadow-md rounded my-6">
+                    <table class="min-w-full leading-normal">
+                        <thead>
+                            <tr>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">الاسم</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">النوع</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">الحالة</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="accounts-table-body">
+                            <!-- Rows will be inserted here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Add/Edit Account Modal -->
+                <div id="account-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+                    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                        <div class="mt-3 text-center">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="account-modal-title">إضافة حساب</h3>
+                            <form id="account-form" class="mt-2 space-y-4">
+                                <input type="hidden" id="account-id">
+                                <div>
+                                    <label for="account-name" class="block text-sm font-medium text-gray-700 text-right">اسم الحساب</label>
+                                    <input type="text" id="account-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                                </div>
+                                <div>
+                                    <label for="account-type" class="block text-sm font-medium text-gray-700 text-right">النوع</label>
+                                    <select id="account-type" class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                                        <option value="Expense">مصروف</option>
+                                        <option value="Revenue">إيراد</option>
+                                    </select>
+                                </div>
+                                <div class="items-center px-4 py-3">
+                                    <button id="save-account-btn" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-300">
+                                        حفظ
+                                    </button>
+                                </div>
+                            </form>
+                            <div class="items-center px-4 py-3">
+                                <button id="cancel-account-btn" class="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300">
+                                    إلغاء
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="page-vouchers" class="hidden">
+                <div class="flex justify-between items-center mb-6 no-print">
+                    <h2 class="text-3xl font-bold">إدارة السندات</h2>
+                    <div class="space-x-2 space-x-reverse">
+                        <button id="new-receipt-btn" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">سند قبض</button>
+                        <button id="new-payment-btn" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">سند صرف</button>
+                        <button id="new-transfer-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">تحويل</button>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="bg-white p-4 rounded-lg shadow-md my-6 no-print">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="voucher-filter-from-date" class="block text-sm font-medium text-gray-700 text-right">من تاريخ</label>
+                            <input type="date" id="voucher-filter-from-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div>
+                            <label for="voucher-filter-to-date" class="block text-sm font-medium text-gray-700 text-right">إلى تاريخ</label>
+                            <input type="date" id="voucher-filter-to-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div class="self-end">
+                            <button id="voucher-filter-btn" class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                                تطبيق الفلتر
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vouchers Table -->
+                <div class="bg-white shadow-md rounded my-6">
+                    <table class="min-w-full leading-normal">
+                        <thead>
+                            <tr>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">رقم السند</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">التاريخ</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">الخزنة</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">النوع</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">البيان</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">مدين</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">دائن</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vouchers-table-body">
+                            <!-- Vouchers will be listed here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Add/Edit Voucher Modal -->
+                <div id="voucher-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+                    <div class="relative top-5 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4" id="voucher-modal-title">إنشاء سند</h3>
+                        <form id="voucher-form" class="space-y-4">
+                            <input type="hidden" id="voucher-id">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label for="voucher-no" class="block text-sm font-medium text-gray-700 text-right">رقم السند</label>
+                                    <input type="text" id="voucher-no" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm bg-gray-100" readonly>
+                                </div>
+                                <div>
+                                    <label for="voucher-date" class="block text-sm font-medium text-gray-700 text-right">التاريخ</label>
+                                    <input type="date" id="voucher-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                                </div>
+                                <div>
+                                    <label for="voucher-movement-type" class="block text-sm font-medium text-gray-700 text-right">نوع الحركة</label>
+                                    <select id="voucher-movement-type" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required></select>
+                                </div>
+                            </div>
+
+                            <!-- Transfer Fields -->
+                            <div id="transfer-fields" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="from-cashbox" class="block text-sm font-medium text-gray-700 text-right">من خزنة</label>
+                                    <select id="from-cashbox" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></select>
+                                </div>
+                                <div>
+                                    <label for="to-cashbox" class="block text-sm font-medium text-gray-700 text-right">إلى خزنة</label>
+                                    <select id="to-cashbox" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></select>
+                                </div>
+                            </div>
+
+                            <!-- Standard Fields -->
+                            <div id="standard-fields" class="space-y-4">
+                                <div>
+                                    <label for="voucher-cashbox" class="block text-sm font-medium text-gray-700 text-right">الخزنة</label>
+                                    <select id="voucher-cashbox" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></select>
+                                </div>
+                                <div>
+                                    <label for="voucher-party" class="block text-sm font-medium text-gray-700 text-right">الطرف (عميل/مورد)</label>
+                                    <select id="voucher-party" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></select>
+                                </div>
+                                <div>
+                                    <label for="voucher-account" class="block text-sm font-medium text-gray-700 text-right">الحساب (مصروف/إيراد)</label>
+                                    <select id="voucher-account" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></select>
+                                </div>
+                                <div id="on-behalf-investor-container" class="hidden">
+                                    <label for="voucher-on-behalf-investor" class="block text-sm font-medium text-gray-700 text-right">دفعت نيابة عن المستثمر (اختياري)</label>
+                                    <select id="voucher-on-behalf-investor" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="voucher-description" class="block text-sm font-medium text-gray-700 text-right">البيان</label>
+                                <textarea id="voucher-description" rows="2" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></textarea>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="voucher-debit" class="block text-sm font-medium text-gray-700 text-right">المبلغ (مدين)</label>
+                                    <input type="number" id="voucher-debit" min="0" value="0" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                </div>
+                                <div>
+                                    <label for="voucher-credit" class="block text-sm font-medium text-gray-700 text-right">المبلغ (دائن)</label>
+                                    <input type="number" id="voucher-credit" min="0" value="0" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end space-x-4 space-x-reverse pt-4">
+                                <button type="button" id="cancel-voucher-btn" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-700">إلغاء</button>
+                                <button type="submit" id="save-voucher-btn" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-700">حفظ السند</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div id="page-reports" class="hidden">
+                <h2 class="text-3xl font-bold mb-6">تقرير دفتر الخزنة</h2>
+
+                <!-- Filters -->
+                <div class="bg-white p-4 rounded-lg shadow-md mb-6 no-print">
+                    <!-- Report Type Tabs -->
+                    <div class="border-b border-gray-200">
+                        <nav class="-mb-px flex space-x-4 space-x-reverse" id="report-tabs">
+                            <button data-tab="date" class="report-tab active-tab py-4 px-1 border-b-2 font-medium text-sm">تقرير حسب التاريخ</button>
+                            <button data-tab="voucher-range" class="report-tab py-4 px-1 border-b-2 font-medium text-sm">تقرير بأرقام السندات</button>
+                            <button data-tab="single-voucher" class="report-tab py-4 px-1 border-b-2 font-medium text-sm">بحث عن سند معين</button>
+                        </nav>
+                    </div>
+
+                    <!-- Filter Sections -->
+                    <div class="pt-4">
+                        <div class="mb-4">
+                            <label for="report-cashbox" class="block text-sm font-medium text-gray-700 text-right">الخزنة</label>
+                            <select id="report-cashbox" class="mt-1 block w-full md:w-1/3 border-gray-300 rounded-md shadow-sm"></select>
+                        </div>
+
+                        <div id="report-filters-date" class="report-filter-section grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="report-from-date">من تاريخ</label>
+                                <input type="date" id="report-from-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                            </div>
+                            <div>
+                                <label for="report-to-date">إلى تاريخ</label>
+                                <input type="date" id="report-to-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                            </div>
+                        </div>
+
+                        <div id="report-filters-voucher-range" class="report-filter-section hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="report-from-voucher">من سند رقم</label>
+                                <input type="number" id="report-from-voucher" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                            </div>
+                            <div>
+                                <label for="report-to-voucher">إلى سند رقم</label>
+                                <input type="number" id="report-to-voucher" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                            </div>
+                        </div>
+
+                        <div id="report-filters-single-voucher" class="report-filter-section hidden">
+                             <label for="report-voucher-no">رقم السند</label>
+                             <input type="number" id="report-voucher-no" class="mt-1 block w-full md:w-1/3 border-gray-300 rounded-md shadow-sm">
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-4 border-t flex space-x-2 space-x-reverse">
+                        <button id="generate-report-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">عرض التقرير</button>
+                        <button id="clear-report-btn" class="bg-gray-400 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">مسح</button>
+                    </div>
+                </div>
+
+                <!-- Report Results -->
+                <div id="report-results" class="hidden">
+                    <div class="flex justify-between items-center mb-4">
+                        <div id="report-summary" class="text-lg"></div>
+                        <div class="space-x-2 space-x-reverse no-print">
+                            <button id="print-report-btn" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+                                طباعة التقرير
+                            </button>
+                            <button id="export-csv-btn" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                                تصدير CSV
+                            </button>
+                        </div>
+                    </div>
+                    <div class="bg-white shadow-md rounded my-6">
+                        <table class="min-w-full leading-normal">
+                            <thead>
+                                <tr>
+                                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">التاريخ</th>
+                                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">رقم السند</th>
+                                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">البيان</th>
+                                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">مدين</th>
+                                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">دائن</th>
+                                    <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">الرصيد الجاري</th>
+                                </tr>
+                            </thead>
+                            <tbody id="report-table-body">
+                                <!-- Report rows will be inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div id="page-projects" class="hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold">إدارة المشروعات</h2>
+                    <button id="add-project-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        إضافة مشروع جديد
                     </button>
                 </div>
-...
-=======
-                <a href="#project-expenses" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">حركات المستثمرين بالمشروعات</a>
-...
+                <div class="bg-white shadow-md rounded my-6">
+                    <table class="min-w-full leading-normal">
+                        <thead>
+                            <tr>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">اسم المشروع</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">الوصف</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="projects-table-body"></tbody>
+                    </table>
+                </div>
+                <!-- Project Add/Edit Modal -->
+                <div id="project-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+                    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                        <div class="mt-3 text-center">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="project-modal-title">إضافة مشروع</h3>
+                            <form id="project-form" class="mt-2 space-y-4">
+                                <input type="hidden" id="project-id">
+                                <div>
+                                    <label for="project-name" class="block text-sm font-medium text-gray-700 text-right">اسم المشروع</label>
+                                    <input type="text" id="project-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required>
+                                </div>
+                                <div>
+                                    <label for="project-description" class="block text-sm font-medium text-gray-700 text-right">الوصف</label>
+                                    <textarea id="project-description" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"></textarea>
+                                </div>
+                                <div class="items-center px-4 py-3">
+                                    <button type="submit" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-700">حفظ</button>
+                                </div>
+                            </form>
+                            <div class="items-center px-4 py-3">
+                                <button id="cancel-project-btn" class="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-700">إلغاء</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="page-investors" class="hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold">إدارة المستثمرين</h2>
+                    <button id="add-investor-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        إضافة مستثمر جديد
+                    </button>
+                </div>
+                <div class="bg-white shadow-md rounded my-6">
+                    <table class="min-w-full leading-normal">
+                        <thead>
+                            <tr>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">اسم المستثمر</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="investors-table-body"></tbody>
+                    </table>
+                </div>
+                <div id="investor-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+                    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                        <div class="mt-3 text-center">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="investor-modal-title">إضافة مستثمر</h3>
+                            <form id="investor-form" class="mt-2 space-y-4">
+                                <input type="hidden" id="investor-id">
+                                <div>
+                                    <label for="investor-name" class="block text-sm font-medium text-gray-700 text-right">اسم المستثمر</label>
+                                    <input type="text" id="investor-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required>
+                                </div>
+                                <div class="items-center px-4 py-3">
+                                    <button type="submit" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-700">حفظ</button>
+                                </div>
+                            </form>
+                            <div class="items-center px-4 py-3">
+                                <button id="cancel-investor-btn" class="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-700">إلغاء</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="page-settlement-ratios" class="hidden">
+                <h2 class="text-3xl font-bold mb-6">إعداد نسب التسوية للمشروعات</h2>
+                <div class="bg-white p-4 rounded-lg shadow-md mb-6">
+                    <div class="mb-4">
+                        <label for="ratio-project-select" class="block text-sm font-medium text-gray-700 text-right">اختر المشروع لتحديد نسب مستثمريه</label>
+                        <select id="ratio-project-select" class="mt-1 block w-full md:w-1/2 border-gray-300 rounded-md shadow-sm"></select>
+                    </div>
+                </div>
+                <div id="ratios-container" class="hidden bg-white p-4 rounded-lg shadow-md">
+                    <h3 class="text-xl font-bold mb-4">المستثمرون في المشروع: <span id="ratios-project-name" class="text-blue-600"></span></h3>
+
+                    <form id="add-investor-to-ratio-form" class="p-4 mb-4 border-b space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">إضافة مستثمر إلى قائمة النسب</label>
+                        <div class="flex items-end space-x-2 space-x-reverse">
+                            <div class="flex-grow">
+                                <label for="add-investor-select" class="text-xs">المستثمر</label>
+                                <select id="add-investor-select" class="mt-1 block w-full border-gray-300 rounded-md"></select>
+                            </div>
+                            <div class="w-24">
+                                 <label for="add-investor-share-input" class="text-xs">النسبة (%)</label>
+                                <input type="number" id="add-investor-share-input" class="mt-1 block w-full border-gray-300 rounded-md" placeholder="e.g., 50">
+                            </div>
+                            <button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded">إضافة</button>
+                        </div>
+                    </form>
+
+                    <div id="ratios-list" class="space-y-2">
+                        <!-- Investor ratio inputs will be rendered here -->
+                    </div>
+                    <div class="mt-4 pt-4 border-t flex justify-between items-center">
+                        <button id="save-ratios-btn" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">حفظ النسب</button>
+                        <div class="text-lg font-bold">الإجمالي: <span id="ratios-total">0.00</span>%</div>
+                    </div>
+                </div>
+            </div>
             <div id="page-project-expenses" class="hidden">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-3xl font-bold">حركات المستثمرين بالمشروعات</h2>
                     <div class="space-x-2 space-x-reverse">
-                        <button id="add-project-receipt-btn" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                         <button id="add-project-receipt-btn" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
                             + سند قبض جديد
                         </button>
                         <button id="add-project-expense-btn" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
@@ -24,5 +693,215 @@
                         </button>
                     </div>
                 </div>
-...
->>>>>>> REPLACE
+                <div class="bg-white shadow-md rounded my-6">
+                    <table class="min-w-full leading-normal">
+                        <thead>
+                            <tr>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">المشروع</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">التاريخ</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">المدفوع بواسطة</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">الحساب</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">المبلغ</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="project-expenses-table-body"></tbody>
+                    </table>
+                </div>
+                <div id="project-expense-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+                    <div class="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
+                         <h3 class="text-lg leading-6 font-medium text-gray-900" id="project-expense-modal-title">إضافة مصروف مشروع</h3>
+                         <form id="project-expense-form" class="mt-4 space-y-4">
+                            <input type="hidden" id="project-expense-id">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="pe-project-select">المشروع</label>
+                                    <select id="pe-project-select" class="mt-1 block w-full border-gray-300 rounded-md" required></select>
+                                </div>
+                                <div>
+                                    <label for="pe-date">التاريخ</label>
+                                    <input type="date" id="pe-date" class="mt-1 block w-full border-gray-300 rounded-md" required>
+                                </div>
+                                <div>
+                                    <label for="pe-investor-select">المدفوع بواسطة (المستثمر)</label>
+                                    <select id="pe-investor-select" class="mt-1 block w-full border-gray-300 rounded-md" required></select>
+                                </div>
+                                <div id="pe-account-row">
+                                    <label for="pe-account-select">الحساب (المصروف)</label>
+                                    <select id="pe-account-select" class="mt-1 block w-full border-gray-300 rounded-md"></select>
+                                </div>
+                                <div>
+                                    <label for="pe-amount">المبلغ</label>
+                                    <input type="number" id="pe-amount" min="0.01" step="0.01" class="mt-1 block w-full border-gray-300 rounded-md" required>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="pe-notes">ملاحظات</label>
+                                <textarea id="pe-notes" rows="2" class="mt-1 block w-full border-gray-300 rounded-md"></textarea>
+                            </div>
+                            <div class="flex justify-end space-x-2 space-x-reverse pt-4">
+                                <button type="button" id="cancel-pe-btn" class="bg-gray-500 text-white py-2 px-4 rounded">إلغاء</button>
+                                <button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded">حفظ</button>
+                            </div>
+                         </form>
+                    </div>
+                </div>
+            </div>
+             <div id="page-settlement-reports" class="hidden">
+                <h2 class="text-3xl font-bold mb-6">تقارير تسوية المشروعات</h2>
+
+                <div class="bg-white p-4 rounded-lg shadow-md mb-6 no-print flex justify-between items-end">
+                    <div class="flex-grow">
+                        <label for="settlement-report-project-select" class="block text-sm font-medium text-gray-700 text-right">اختر المشروع لعرض تقاريره</label>
+                        <select id="settlement-report-project-select" class="mt-1 block w-full md:w-1/2 border-gray-300 rounded-md shadow-sm"></select>
+                    </div>
+                    <div class="space-x-2 space-x-reverse">
+                        <button id="print-settlement-details-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                            طباعة التفاصيل
+                        </button>
+                        <button id="print-final-settlement-btn" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                            طباعة التسوية النهائية
+                        </button>
+                    </div>
+                </div>
+
+                <div id="settlement-report-content" class="hidden space-y-8">
+                    <!-- Investor Expenses Report Section -->
+                    <div>
+                        <h3 class="text-2xl font-bold mb-4">تقرير مدفوعات المستثمرين</h3>
+                        <div class="bg-white shadow-md rounded">
+                            <table class="min-w-full leading-normal">
+                                <thead>
+                                    <tr>
+                                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">المستثمر</th>
+                                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold text-gray-600 uppercase">إجمالي المدفوع</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="investor-expenses-report-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Final Settlement Section -->
+                    <div id="final-settlement-div">
+                        <h3 class="text-2xl font-bold mb-4">شاشة التسوية النهائية</h3>
+                        <div class="bg-white shadow-md rounded p-4">
+                            <p class="mb-4"><strong>إجمالي مصروفات المشروع:</strong> <span id="settlement-total-expenses" class="font-bold"></span></p>
+                            <table class="min-w-full leading-normal">
+                                <thead>
+                                    <tr>
+                                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold">المستثمر</th>
+                                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold">نسبة التسوية</th>
+                                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold">الحصة العادلة</th>
+                                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold">المدفوع الفعلي</th>
+                                        <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold">الرصيد النهائي</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="final-settlement-report-body"></tbody>
+                            </table>
+                            <div class="mt-6">
+                                <h4 class="text-xl font-bold">خطة التسوية المقترحة:</h4>
+                                <ul id="settlement-plan-list" class="mt-2 list-disc pr-5"></ul>
+                            </div>
+                            <div class="mt-8 pt-4 border-t text-center">
+                                <button id="execute-settlement-btn" class="bg-purple-600 hover:bg-purple-800 text-white font-bold py-2 px-6 rounded-lg shadow-lg">
+                                    تنفيذ وتأكيد التسوية
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="page-settlements" class="hidden">
+                <h2 class="text-3xl font-bold mb-6">التسويات المنفذة</h2>
+                <div class="bg-white shadow-md rounded my-6">
+                    <table class="min-w-full leading-normal">
+                        <thead>
+                            <tr>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">تاريخ التسوية</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">المشروع</th>
+                            </tr>
+                        </thead>
+                        <tbody id="settlements-table-body">
+                            <!-- Executed settlements will be listed here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="page-settings" class="hidden">
+                <h2 class="text-3xl font-bold mb-6">الإعدادات</h2>
+
+                <div class="bg-white p-6 rounded-lg shadow-md max-w-lg">
+                    <form id="settings-form">
+                        <div class="space-y-4">
+                            <div>
+                                <label for="company-name-setting" class="block text-sm font-medium text-gray-700 text-right">اسم الشركة</label>
+                                <input type="text" id="company-name-setting" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="اكتب اسم شركتك هنا">
+                            </div>
+                             <div>
+                                <label for="currency-setting" class="block text-sm font-medium text-gray-700 text-right">العملة (e.g., EGP, SAR)</label>
+                                <input type="text" id="currency-setting" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="EGP">
+                            </div>
+                        </div>
+                        <div class="mt-6">
+                            <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                                حفظ الإعدادات
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md max-w-lg mt-8">
+                    <h3 class="text-xl font-bold mb-4">النسخ الاحتياطي والاستعادة</h3>
+                    <div class="space-y-4">
+                        <p class="text-sm text-gray-600">
+                            يمكنك تصدير جميع بياناتك (خزن، أطراف، حسابات، سندات) في ملف واحد. يمكنك استخدام هذا الملف لاستعادة بياناتك لاحقًا.
+                        </p>
+                        <button id="export-data-btn" class="w-full bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                            تصدير البيانات
+                        </button>
+                    </div>
+                     <div class="space-y-4 mt-6 border-t pt-4">
+                        <p class="text-sm text-gray-600">
+                           <strong class="text-red-600">تحذير:</strong> استيراد ملف جديد سيقوم بحذف جميع البيانات الحالية بشكل نهائي.
+                        </p>
+                        <input type="file" id="import-file-input" class="hidden" accept=".json">
+                        <button id="import-data-btn" class="w-full bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+                            استيراد البيانات
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md max-w-lg mt-8 border-t-4 border-red-500">
+                     <h3 class="text-xl font-bold mb-4 text-red-700">منطقة الخطر</h3>
+                     <p class="text-sm text-gray-600 mb-4">
+                        سيؤدي هذا الإجراء إلى حذف قاعدة البيانات بالكامل بما في ذلك جميع السندات والإعدادات. لا يمكن التراجع عن هذا الإجراء.
+                     </p>
+                     <button id="factory-reset-btn" class="w-full bg-red-700 hover:bg-red-900 text-white font-bold py-2 px-4 rounded">
+                        مسح جميع بيانات التطبيق
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/database.js"></script>
+    <script src="js/settlement-database.js"></script>
+    <script src="js/projects.js"></script>
+    <script src="js/investors.js"></script>
+    <script src="js/project_expenses.js"></script>
+    <script src="js/settlement_ratios.js"></script>
+    <script src="js/settlement_reports.js"></script>
+    <script src="js/settlements.js"></script>
+    <script src="js/cashboxes.js"></script>
+    <script src="js/parties.js"></script>
+    <script src="js/accounts.js"></script>
+    <script src="js/vouchers.js"></script>
+    <script src="js/reports.js"></script>
+    <script src="js/print-helper.js"></script>
+    <script src="js/settings.js"></script>
+    <script src="js/dashboard.js"></script>
+    <div id="detailed-print-area" class="hidden"></div>
+    <script src="js/main.js"></script>
+</body>
+</html>

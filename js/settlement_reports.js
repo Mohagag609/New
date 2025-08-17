@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const finalSettlementTbody = document.getElementById('final-settlement-report-body');
     const settlementPlanList = document.getElementById('settlement-plan-list');
 
-    let settlementData = []; // Moved to higher scope
+    let settlementData = [];
 
     const generateReports = async () => {
         const projectId = Number(projectSelect.value);
@@ -25,7 +25,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // Find the last settlement for this project
             const lastSettlement = await db.project_settlements
                 .where('projectId').equals(projectId)
                 .last();
@@ -40,7 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
-            // Fetch vouchers created after the last settlement date
             const expenseVouchers = await db.vouchers
                 .where('[projectId+date]').above([projectId, lastSettlementDate])
                 .toArray();
@@ -57,7 +55,6 @@ document.addEventListener('DOMContentLoaded', () => {
             expenseVouchers.forEach(v => {
                 if (v.paidByInvestorId) {
                     const currentPaid = paidInPeriod.get(v.paidByInvestorId) || 0;
-                    // Add credits (receipts) and debits (expenses paid on behalf)
                     const amount = (v.credit || 0) + (v.debit || 0);
                     paidInPeriod.set(v.paidByInvestorId, currentPaid + amount);
                 }
@@ -106,7 +103,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
             });
 
-            // Settlement plan logic remains the same
             let creditors = settlementData.filter(d => d.balance > 0).map(d => ({...d})).sort((a,b) => b.balance - a.balance);
             let debtors = settlementData.filter(d => d.balance < 0).map(d => ({...d, balance: -d.balance})).sort((a,b) => b.balance - a.balance);
             const transactions = [];
@@ -133,7 +129,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 executeSettlementBtn.disabled = false;
             }
 
-
             reportContent.classList.remove('hidden');
         } catch (error) {
             console.error('Failed to generate settlement reports:', error);
@@ -149,7 +144,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const projectId = Number(projectSelect.value);
         const today = new Date().toISOString().split('T')[0];
 
-        // We need the total expenses from the UI to store in the snapshot
         const totalExpenses = settlementData.reduce((sum, d) => sum + d.fairShare, 0);
 
         const settlementRecord = {
@@ -159,14 +153,14 @@ document.addEventListener('DOMContentLoaded', () => {
             investorBalances: settlementData.map(d => ({
                 investorId: d.investorId,
                 investorName: d.investorName,
-                balance: d.paid // The amount they have contributed so far
+                balance: d.paid
             }))
         };
 
         try {
             await db.project_settlements.add(settlementRecord);
             alert('تم حفظ التسوية بنجاح!');
-            await generateReports(); // Refresh the report view
+            await generateReports();
             alert('تم تحديث التقرير. المصروفات تمت تصفيتها، والأرصدة الجديدة تمثل نقطة البداية القادمة.');
         } catch (error) {
             console.error('Failed to save settlement snapshot:', error);
@@ -207,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const [vouchers, accounts, parties, projectInvestors] = await Promise.all([
-                db.settlement_vouchers.where({ projectId }).toArray(),
+                db.vouchers.where({ projectId }).toArray(),
                 db.accounts.toArray(),
                 db.parties.toArray(),
                 db.project_investors.where({ projectId }).toArray()
@@ -226,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const vouchersByInvestor = new Map();
             investors.forEach(inv => vouchersByInvestor.set(inv.id, []));
-            vouchers.filter(v => v.type !== 'Settlement').forEach(v => {
+            vouchers.filter(v => v.movementType === 'Project Expense').forEach(v => {
                 if (vouchersByInvestor.has(v.paidByInvestorId)) {
                     vouchersByInvestor.get(v.paidByInvestorId).push(v);
                 }
@@ -256,17 +250,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     let total = 0;
                     investorVouchers.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(v => {
-                        const accountName = accountMap.get(v.categoryId) || 'غير معروف';
+                        const accountName = accountMap.get(v.accountId) || 'غير معروف';
                         const partyName = v.partyId ? partyMap.get(v.partyId) || 'غير معروف' : '';
 
                         reportHtml += `<tr>
                             <td class="px-5 py-2 border-b">${v.date}</td>
                             <td class="px-5 py-2 border-b">${accountName}</td>
                             <td class="px-5 py-2 border-b">${partyName}</td>
-                            <td class="px-5 py-2 border-b">${v.notes || ''}</td>
-                            <td class="px-5 py-2 border-b text-left">${formatCurrency(v.amount)}</td>
+                            <td class="px-5 py-2 border-b">${v.description || ''}</td>
+                            <td class="px-5 py-2 border-b text-left">${formatCurrency(v.debit)}</td>
                         </tr>`;
-                        total += v.amount;
+                        total += v.debit;
                     });
 
                     reportHtml += `</tbody>
