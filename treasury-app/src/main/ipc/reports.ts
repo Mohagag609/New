@@ -27,7 +27,7 @@ export async function getIncomeStatement(range: { from: string, to: string }) {
         JOIN entries e ON a.id = e.account_id
         WHERE a.type = 'revenue' AND e.date BETWEEN ? AND ?
         GROUP BY a.id, a.name
-    `).all(from, to);
+    `).all(from, to) as {id: number, name: string, balance: number}[];
 
     const expenseAccounts = db.prepare(`
         SELECT a.id, a.name, (SUM(e.debit) - SUM(e.credit)) as balance
@@ -35,10 +35,10 @@ export async function getIncomeStatement(range: { from: string, to: string }) {
         JOIN entries e ON a.id = e.account_id
         WHERE a.type = 'expense' AND e.date BETWEEN ? AND ?
         GROUP BY a.id, a.name
-    `).all(from, to);
+    `).all(from, to) as {id: number, name: string, balance: number}[];
 
-    const totalRevenue = revenueAccounts.reduce((sum, acc) => sum + (acc as any).balance, 0);
-    const totalExpenses = expenseAccounts.reduce((sum, acc) => sum + (acc as any).balance, 0);
+    const totalRevenue = revenueAccounts.reduce((sum, acc) => sum + acc.balance, 0);
+    const totalExpenses = expenseAccounts.reduce((sum, acc) => sum + acc.balance, 0);
 
     return {
         revenueAccounts,

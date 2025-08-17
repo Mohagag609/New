@@ -53,7 +53,7 @@ export function runMigrations(db: Database) {
   const appliedMigrationNames = new Set(appliedMigrations.map(m => m.name));
 
   const migrationFiles = fs.readdirSync(migrationsDir)
-    .filter(file => file.endsWith('.sql'))
+    .filter((file: string) => file.endsWith('.sql'))
     .sort();
 
   let migrationsRun = 0;

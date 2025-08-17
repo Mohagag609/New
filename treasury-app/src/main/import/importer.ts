@@ -4,8 +4,7 @@ import * as xlsx from 'xlsx';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import db from '../db';
-import MappingConfigSchema, { type MappingConfig } from './mapping.schema';
-import { createVoucher } from './vouchers'; // We will use the same createVoucher logic
+import MappingConfigSchema from './mapping.schema';
 
 dayjs.extend(customParseFormat);
 
@@ -91,23 +90,8 @@ export async function runImporter(mappingPath: string, dataPath: string): Promis
                 const partyId = partyName && mappingConfig.options.createMissingParties ? findOrCreate('party', partyName, { kind: 'customer' }) : null;
                 const partnerId = partnerName && mappingConfig.options.createMissingPartners ? findOrCreate('partner', partnerName) : null;
 
-                // 4. Create Voucher DTO
-                const voucherDto = {
-                    date,
-                    kind,
-                    amount,
-                    method,
-                    notes,
-                    accountId: defaultCashAccountId,
-                    targetAccountId,
-                    partyId,
-                    partnerId,
-                    projectId: null, // Project not handled in this import scope
-                };
-
-                // 5. Create Voucher (uses the transactional logic from vouchers.ts)
-                // We need to adapt createVoucher to be usable here within this parent transaction.
-                // For simplicity, we'll replicate the core logic here.
+                // 4. Create Voucher
+                // We replicate the core logic here to stay within the parent transaction.
                 const voucherStmt = db.prepare(`INSERT INTO vouchers (date, kind, account_id, party_id, partner_id, amount, method, notes, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`);
                 const voucherResult = voucherStmt.run(date, kind, defaultCashAccountId, partyId, partnerId, amount, method, notes);
                 const voucherId = voucherResult.lastInsertRowid as number;

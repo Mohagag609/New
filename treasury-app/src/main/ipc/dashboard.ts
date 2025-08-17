@@ -1,5 +1,4 @@
 import db from '../db';
-import dayjs from 'dayjs';
 
 interface DateRange {
   from: string;
