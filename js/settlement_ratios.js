@@ -83,22 +83,29 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const inputs = ratiosList.querySelectorAll('input.ratio-input');
-        const updates = Array.from(inputs).map(input => {
-            return {
-                key: Number(input.dataset.linkId),
-                changes: { share: (Number(input.value) || 0) / 100 }
-            };
-        });
-
-        if (updates.length === 0) {
-            alert('لا توجد نسب لتحديثها.');
-            return;
-        }
-
         try {
-            await db.project_investors.bulkUpdate(updates);
+            const inputs = ratiosList.querySelectorAll('input.ratio-input');
+            if (inputs.length === 0) {
+                alert('لا توجد نسب لتحديثها.');
+                return;
+            }
+
+            const linksToUpdate = [];
+            for (const input of inputs) {
+                const linkId = Number(input.dataset.linkId);
+                const newShare = (Number(input.value) || 0) / 100;
+
+                // Fetch the existing record to update it
+                const link = await db.project_investors.get(linkId);
+                if (link) {
+                    link.share = newShare;
+                    linksToUpdate.push(link);
+                }
+            }
+
+            await db.project_investors.bulkPut(linksToUpdate);
             alert('تم حفظ النسب بنجاح!');
+
         } catch (error) {
             console.error('Failed to save ratios:', error);
             alert(`حدث خطأ أثناء حفظ النسب: ${error.stack}`);
