@@ -190,12 +190,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Initializer ---
     const init = () => {
-        const { addBtn, cancelBtn, form, closeProjInvBtn, linkInvestorForm, projInvList, tableBody } = getElements();
+        const { addBtn, cancelBtn, form, closeProjInvBtn, linkInvestorForm, projInvList, tableBody, projInvModal } = getElements();
 
         addBtn.addEventListener('click', () => openModal());
         cancelBtn.addEventListener('click', closeModal);
         form.addEventListener('submit', handleFormSubmit);
-        closeProjInvBtn.addEventListener('click', () => getElements().projInvModal.classList.add('hidden'));
+        closeProjInvBtn.addEventListener('click', () => projInvModal.classList.add('hidden'));
         linkInvestorForm.addEventListener('submit', handleLinkInvestor);
         projInvList.addEventListener('click', (e) => {
             if (e.target.classList.contains('remove-investor-link-btn')) {
