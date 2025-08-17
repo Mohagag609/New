@@ -33,7 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Listen for the custom 'show' event to render the page
     document.addEventListener('show', (e) => {
         if (e.detail.pageId === 'page-settlements') {
             renderSettlements();

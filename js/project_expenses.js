@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelBtn = document.getElementById('cancel-pe-btn');
     const form = document.getElementById('project-expense-form');
     const tableBody = document.getElementById('project-expenses-table-body');
+    const accountRow = document.getElementById('pe-account-row');
 
     // Form fields
     const projectSelect = document.getElementById('pe-project-select');
@@ -32,14 +33,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const openModal = async (type = 'expense') => {
         form.reset();
-        const accountRow = accountSelect.closest('#pe-account-row');
 
         if (type === 'expense') {
             modalTitle.textContent = 'إضافة مصروف مشروع';
-            if (accountRow) accountRow.classList.remove('hidden');
+            accountRow.classList.remove('hidden');
         } else {
             modalTitle.textContent = 'إضافة سند قبض من مستثمر';
-            if (accountRow) accountRow.classList.add('hidden');
+            accountRow.classList.add('hidden');
         }
 
         form.dataset.type = type;
@@ -87,13 +87,15 @@ document.addEventListener('DOMContentLoaded', () => {
             tableBody.innerHTML = '';
             vouchers.forEach(v => {
                 const row = document.createElement('tr');
-                const amount = v.movementType === 'Project Expense' ? v.debit : v.credit;
-                const typeText = v.movementType === 'Project Expense' ? 'مصروف' : 'قبض';
+                const isExpense = v.movementType === 'Project Expense';
+                const amount = isExpense ? v.debit : v.credit;
+                const typeText = isExpense ? accountMap.get(v.accountId) : 'إيداع رأس مال';
+
                 row.innerHTML = `
                     <td class="px-5 py-3">${projectMap.get(v.projectId) || ''}</td>
                     <td class="px-5 py-3">${v.date}</td>
                     <td class="px-5 py-3">${investorMap.get(v.paidByInvestorId) || ''}</td>
-                    <td class="px-5 py-3">${accountMap.get(v.accountId) || typeText}</td>
+                    <td class="px-5 py-3">${typeText || ''}</td>
                     <td class="px-5 py-3">${formatCurrency(amount)}</td>
                     <td class="px-5 py-3">
                         <button class="delete-btn text-red-500" data-id="${v.id}">حذف</button>

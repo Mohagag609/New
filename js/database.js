@@ -12,6 +12,7 @@ db.version(9).stores({
 
     // Link Tables
     project_investors: '++id, &[projectId+investorId], projectId, investorId',
+    settlementRatios: '++id, &[projectId+investorId]',
 
     // Transactional Tables
     vouchers: '++id, &voucherNo, [cashboxId+date], [projectId+date], transferId, partyId, accountId, movementType, paidByInvestorId',
