@@ -55,11 +55,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const paidInPeriod = new Map();
             expenseVouchers.forEach(v => {
-                // Assuming expenses are paid by investors via vouchers
-                // This part needs clarification on how investor payments are recorded
-                // For now, let's assume a 'paidByInvestorId' field exists on the main voucher table
-                 if (v.paidByInvestorId) {
-                    paidInPeriod.set(v.paidByInvestorId, (paidInPeriod.get(v.paidByInvestorId) || 0) + v.debit);
+                if (v.paidByInvestorId) {
+                    const currentPaid = paidInPeriod.get(v.paidByInvestorId) || 0;
+                    // Add credits (receipts) and debits (expenses paid on behalf)
+                    const amount = (v.credit || 0) + (v.debit || 0);
+                    paidInPeriod.set(v.paidByInvestorId, currentPaid + amount);
                 }
             });
 
