@@ -1,27 +1,36 @@
 document.addEventListener('DOMContentLoaded', () => {
-    let isInitialized = false;
+    const page = document.getElementById('page-investors');
+    if (!page) return;
 
-    // --- DOM Element Getters ---
-    // We call these getters inside functions to ensure the DOM is ready
-    const getElements = () => ({
-        addBtn: document.getElementById('add-investor-btn'),
-        modal: document.getElementById('investor-modal'),
-        modalTitle: document.getElementById('investor-modal-title'),
-        cancelBtn: document.getElementById('cancel-investor-btn'),
-        form: document.getElementById('investor-form'),
-        tableBody: document.getElementById('investors-table-body'),
-        idInput: document.getElementById('investor-id'),
-        nameInput: document.getElementById('investor-name'),
-        detailsModal: document.getElementById('investor-details-modal'),
-        detailsModalTitle: document.getElementById('investor-details-modal-title'),
-        detailsModalBody: document.getElementById('investor-details-modal-body'),
-        detailsCancelBtn: document.getElementById('cancel-investor-details-btn'),
-    });
+    // --- DOM Elements ---
+    const addBtn = document.getElementById('add-investor-btn');
+    const modal = document.getElementById('investor-modal');
+    const modalTitle = document.getElementById('investor-modal-title');
+    const cancelBtn = document.getElementById('cancel-investor-btn');
+    const form = document.getElementById('investor-form');
+    const tableBody = document.getElementById('investors-table-body');
 
-    // --- Core Functions ---
+    const idInput = document.getElementById('investor-id');
+    const nameInput = document.getElementById('investor-name');
+
+    const openModal = (investor = null) => {
+        form.reset();
+        if (investor) {
+            modalTitle.textContent = 'تعديل مستثمر';
+            idInput.value = investor.id;
+            nameInput.value = investor.name;
+        } else {
+            modalTitle.textContent = 'إضافة مستثمر جديد';
+            idInput.value = '';
+        }
+        modal.classList.remove('hidden');
+    };
+
+    const closeModal = () => {
+        modal.classList.add('hidden');
+    };
+
     const renderInvestors = async () => {
-        const { tableBody } = getElements();
-        if (!tableBody) return;
         try {
             const investors = await db.investors.toArray();
             tableBody.innerHTML = '';
@@ -42,68 +51,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const openDetailsModal = async (investor) => {
-        const { detailsModal, detailsModalTitle, detailsModalBody } = getElements();
-        if (!detailsModal || !detailsModalTitle || !detailsModalBody) return;
-
-        detailsModalTitle.textContent = `تفاصيل مستثمر: ${investor.name}`;
-        try {
-            const ratios = await db.settlementRatios.where({ investorId: investor.id }).toArray();
-            const projectIds = ratios.map(r => r.projectId);
-            const projects = await db.projects.where('id').anyOf(projectIds).toArray();
-            const projectsById = projects.reduce((acc, p) => ({ ...acc, [p.id]: p }), {});
-
-            detailsModalBody.innerHTML = '';
-            if (ratios.length > 0) {
-                const list = document.createElement('ul');
-                list.className = 'list-disc space-y-2 pl-5';
-                ratios.forEach(ratio => {
-                    const project = projectsById[ratio.projectId];
-                    if (project) {
-                        const listItem = document.createElement('li');
-                        listItem.textContent = `مشروع: ${project.name} - نسبة: ${ratio.ratio * 100}%`;
-                        list.appendChild(listItem);
-                    }
-                });
-                detailsModalBody.appendChild(list);
-            } else {
-                detailsModalBody.textContent = 'لا توجد مشاريع مرتبطة بهذا المستثمر.';
-            }
-            detailsModal.classList.remove('hidden');
-        } catch (error) {
-            console.error('Failed to open details modal:', error);
-        }
-    };
-
-    const closeDetailsModal = () => {
-        const { detailsModal } = getElements();
-        if (detailsModal) detailsModal.classList.add('hidden');
-    };
-
-    const openModal = (investor = null) => {
-        const { form, modal, modalTitle, idInput, nameInput } = getElements();
-        if (!form || !modal || !modalTitle || !idInput || !nameInput) return;
-
-        form.reset();
-        modalTitle.textContent = investor ? 'تعديل مستثمر' : 'إضافة مستثمر جديد';
-        idInput.value = investor ? investor.id : '';
-        nameInput.value = investor ? investor.name : '';
-        modal.classList.remove('hidden');
-    };
-
-    const closeModal = () => {
-        const { modal } = getElements();
-        if (modal) modal.classList.add('hidden');
-    };
-
     const handleFormSubmit = async (event) => {
         event.preventDefault();
-        const { idInput, nameInput } = getElements();
-        if (!idInput || !nameInput) return;
-
         const id = idInput.value ? Number(idInput.value) : null;
-        const investorData = { name: nameInput.value.trim() };
-        if (!investorData.name) return alert('اسم المستثمر مطلوب.');
+        const investorData = {
+            name: nameInput.value.trim(),
+        };
+
+        if (!investorData.name) {
+            alert('اسم المستثمر مطلوب.');
+            return;
+        }
 
         try {
             if (id) {
@@ -114,25 +72,82 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('تمت إضافة المستثمر بنجاح.');
             }
             closeModal();
-            await renderInvestors();
+            renderInvestors();
         } catch (error) {
             console.error('Failed to save investor:', error);
-            alert(error.name === 'ConstraintError' ? 'اسم المستثمر موجود بالفعل.' : 'حدث خطأ أثناء حفظ المستثمر.');
+            if (error.name === 'ConstraintError') {
+                alert('اسم المستثمر موجود بالفعل.');
+            } else {
+                alert('حدث خطأ أثناء حفظ المستثمر.');
+            }
         }
     };
 
     const handleDelete = async (id) => {
-        if (!confirm('هل أنت متأكد أنك تريد حذف هذا المستثمر؟')) return;
+        // A real app should check for links to projects before deleting.
+        if (!confirm('هل أنت متأكد أنك تريد حذف هذا المستثمر؟')) {
+            return;
+        }
         try {
             await db.investors.delete(id);
             alert('تم حذف المستثمر.');
-            await renderInvestors();
+            renderInvestors();
         } catch (error) {
             console.error('Failed to delete investor:', error);
         }
     };
 
-    const handleTableClick = async (event) => {
+    addBtn.addEventListener('click', () => openModal());
+    cancelBtn.addEventListener('click', closeModal);
+    form.addEventListener('submit', handleFormSubmit);
+
+    // Details Modal Logic
+    const detailsModal = document.getElementById('investor-details-modal');
+    const openDetailsModal = async (investorId) => {
+        if (!detailsModal) return;
+        const investor = await db.investors.get(investorId);
+        if (!investor) return;
+
+        const detailsModalTitle = document.getElementById('investor-details-modal-title');
+        const detailsModalBody = document.getElementById('investor-details-modal-body');
+
+        detailsModalTitle.textContent = `تفاصيل مستثمر: ${investor.name}`;
+
+        const ratios = await db.settlementRatios.where({ investorId }).toArray();
+        const projectIds = ratios.map(r => r.projectId);
+        const projects = await db.projects.where('id').anyOf(projectIds).toArray();
+        const projectsById = projects.reduce((acc, p) => ({ ...acc, [p.id]: p }), {});
+
+        detailsModalBody.innerHTML = '';
+        if (ratios.length > 0) {
+            const list = document.createElement('ul');
+            list.className = 'list-disc space-y-2 pl-5';
+            ratios.forEach(ratio => {
+                const project = projectsById[ratio.projectId];
+                if(project) {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = `مشروع: ${project.name} - نسبة: ${ratio.ratio * 100}%`;
+                    list.appendChild(listItem);
+                }
+            });
+            detailsModalBody.appendChild(list);
+        } else {
+            detailsModalBody.textContent = 'لا توجد مشاريع مرتبطة بهذا المستثمر.';
+        }
+        detailsModal.classList.remove('hidden');
+    };
+
+    const closeDetailsModal = () => {
+        if (detailsModal) detailsModal.classList.add('hidden');
+    };
+
+    const detailsCancelBtn = document.getElementById('cancel-investor-details-btn');
+    if (detailsCancelBtn) {
+        detailsCancelBtn.addEventListener('click', closeDetailsModal);
+    }
+
+    // Combined Event Listener for Table Body
+    tableBody.addEventListener('click', async (event) => {
         const target = event.target;
         if (!target.dataset.id) return;
         const id = Number(target.dataset.id);
@@ -143,34 +158,12 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (target.classList.contains('delete-btn')) {
             handleDelete(id);
         } else if (target.classList.contains('details-btn')) {
-            const investor = await db.investors.get(id);
-            if (investor) openDetailsModal(investor);
+            openDetailsModal(id);
         }
-    };
+    });
 
-    // --- Initializer ---
-    const init = () => {
-        const { addBtn, cancelBtn, detailsCancelBtn, form, tableBody } = getElements();
-        if (!addBtn || !cancelBtn || !detailsCancelBtn || !form || !tableBody) {
-            console.error("Failed to initialize investors page: one or more elements are missing.");
-            return;
-        }
-
-        addBtn.addEventListener('click', () => openModal());
-        cancelBtn.addEventListener('click', closeModal);
-        detailsCancelBtn.addEventListener('click', closeDetailsModal);
-        form.addEventListener('submit', handleFormSubmit);
-        tableBody.addEventListener('click', handleTableClick);
-
-        isInitialized = true;
-    };
-
-    // --- Page Load Event ---
     document.addEventListener('show', (e) => {
         if (e.detail.pageId === 'page-investors') {
-            if (!isInitialized) {
-                init();
-            }
             renderInvestors();
         }
     });

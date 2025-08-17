@@ -1,32 +1,39 @@
 document.addEventListener('DOMContentLoaded', () => {
-    let isInitialized = false;
+    try {
+        const page = document.getElementById('page-projects');
+        if (!page) return;
 
-    // --- DOM Element Getters ---
-    const getElements = () => ({
-        addBtn: document.getElementById('add-project-btn'),
-        modal: document.getElementById('project-modal'),
-        modalTitle: document.getElementById('project-modal-title'),
-        cancelBtn: document.getElementById('cancel-project-btn'),
-        form: document.getElementById('project-form'),
-        tableBody: document.getElementById('projects-table-body'),
-        idInput: document.getElementById('project-id'),
-        nameInput: document.getElementById('project-name'),
-        descriptionInput: document.getElementById('project-description'),
-        projInvModal: document.getElementById('project-investors-modal'),
-        projInvModalTitle: document.getElementById('proj-inv-modal-title'),
-        linkInvestorForm: document.getElementById('link-investor-form'),
-        investorSelect: document.getElementById('investor-select'),
-        investorShareInput: document.getElementById('investor-share'),
-        projInvList: document.getElementById('project-investors-list'),
-        closeProjInvBtn: document.getElementById('close-proj-inv-modal-btn'),
-    });
+        // --- DOM Elements ---
+    const addBtn = document.getElementById('add-project-btn');
+    const modal = document.getElementById('project-modal');
+    const modalTitle = document.getElementById('project-modal-title');
+    const cancelBtn = document.getElementById('cancel-project-btn');
+    const form = document.getElementById('project-form');
+    const tableBody = document.getElementById('projects-table-body');
 
-    let currentManagingProjectId = null;
+    const idInput = document.getElementById('project-id');
+    const nameInput = document.getElementById('project-name');
+    const descriptionInput = document.getElementById('project-description');
 
-    // --- Core Functions ---
+    const openModal = (project = null) => {
+        form.reset();
+        if (project) {
+            modalTitle.textContent = 'تعديل مشروع';
+            idInput.value = project.id;
+            nameInput.value = project.name;
+            descriptionInput.value = project.description || '';
+        } else {
+            modalTitle.textContent = 'إضافة مشروع جديد';
+            idInput.value = '';
+        }
+        modal.classList.remove('hidden');
+    };
+
+    const closeModal = () => {
+        modal.classList.add('hidden');
+    };
+
     const renderProjects = async () => {
-        const { tableBody } = getElements();
-        if (!tableBody) return;
         try {
             const projects = await db.projects.toArray();
             tableBody.innerHTML = '';
@@ -48,31 +55,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const openModal = (project = null) => {
-        const { form, modal, modalTitle, idInput, nameInput, descriptionInput } = getElements();
-        if (!form || !modal) return;
-        form.reset();
-        modalTitle.textContent = project ? 'تعديل مشروع' : 'إضافة مشروع جديد';
-        idInput.value = project ? project.id : '';
-        nameInput.value = project ? project.name : '';
-        descriptionInput.value = project ? project.description || '' : '';
-        modal.classList.remove('hidden');
-    };
-
-    const closeModal = () => {
-        const { modal } = getElements();
-        if (modal) modal.classList.add('hidden');
-    };
-
     const handleFormSubmit = async (event) => {
         event.preventDefault();
-        const { idInput, nameInput, descriptionInput } = getElements();
         const id = idInput.value ? Number(idInput.value) : null;
         const projectData = {
             name: nameInput.value.trim(),
             description: descriptionInput.value.trim(),
         };
-        if (!projectData.name) return alert('اسم المشروع مطلوب.');
+
+        if (!projectData.name) {
+            alert('اسم المشروع مطلوب.');
+            return;
+        }
 
         try {
             if (id) {
@@ -83,32 +77,76 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('تمت إضافة المشروع بنجاح.');
             }
             closeModal();
-            await renderProjects();
+            renderProjects();
         } catch (error) {
             console.error('Failed to save project:', error);
-            alert(error.name === 'ConstraintError' ? 'اسم المشروع موجود بالفعل.' : 'حدث خطأ أثناء حفظ المشروع.');
+            if (error.name === 'ConstraintError') {
+                alert('اسم المشروع موجود بالفعل.');
+            } else {
+                alert('حدث خطأ أثناء حفظ المشروع.');
+            }
         }
     };
 
     const handleDelete = async (id) => {
-        if (!confirm('هل أنت متأكد أنك تريد حذف هذا المشروع؟ سيتم حذف جميع البيانات المرتبطة به.')) return;
+        // IMPORTANT: A real app would check for associated data before deleting.
+        // For now, we just show a confirmation.
+        if (!confirm('هل أنت متأكد أنك تريد حذف هذا المشروع؟ سيتم حذف جميع البيانات المرتبطة به.')) {
+            return;
+        }
         try {
+            // This is a cascading delete, which is complex.
+            // For now, just delete the project itself. The user was warned about data loss.
             await db.projects.delete(id);
-            await renderProjects();
             alert('تم حذف المشروع.');
+            renderProjects();
         } catch (error) {
             console.error('Failed to delete project:', error);
         }
     };
 
-    // --- Investor Linking Functions ---
+    addBtn.addEventListener('click', () => openModal());
+    cancelBtn.addEventListener('click', closeModal);
+    form.addEventListener('submit', handleFormSubmit);
+
+    // --- Investor Linking Logic ---
+    const projInvModal = document.getElementById('project-investors-modal');
+    const projInvModalTitle = document.getElementById('proj-inv-modal-title');
+    const linkInvestorForm = document.getElementById('link-investor-form');
+    const investorSelect = document.getElementById('investor-select');
+    const investorShareInput = document.getElementById('investor-share');
+    const projInvList = document.getElementById('project-investors-list');
+    const closeProjInvBtn = document.getElementById('close-proj-inv-modal-btn');
+    let currentManagingProjectId = null;
+
+    const openManageInvestorsModal = async (projectId) => {
+        currentManagingProjectId = projectId;
+        const project = await db.projects.get(projectId);
+        if (!project) return;
+
+        projInvModalTitle.textContent = project.name;
+        linkInvestorForm.reset();
+
+        // Populate investor dropdown
+        const allInvestors = await db.investors.toArray();
+        investorSelect.innerHTML = '<option value="">اختر مستثمراً...</option>';
+        allInvestors.forEach(inv => {
+            const option = document.createElement('option');
+            option.value = inv.id;
+            option.textContent = inv.name;
+            investorSelect.appendChild(option);
+        });
+
+        await renderLinkedInvestors(projectId);
+        projInvModal.classList.remove('hidden');
+    };
+
     const renderLinkedInvestors = async (projectId) => {
-        const { projInvList } = getElements();
-        if(!projInvList) return;
         const links = await db.project_investors.where({ projectId }).toArray();
         const investorIds = links.map(l => l.investorId);
         const investors = await db.investors.bulkGet(investorIds);
         const investorMap = new Map(investors.map(i => [i.id, i.name]));
+
         projInvList.innerHTML = '';
         links.forEach(link => {
             const li = document.createElement('li');
@@ -121,34 +159,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const openManageInvestorsModal = async (projectId) => {
-        const { projInvModal, projInvModalTitle, linkInvestorForm, investorSelect } = getElements();
-        if (!projInvModal) return;
-
-        currentManagingProjectId = projectId;
-        const project = await db.projects.get(projectId);
-        if (!project) return;
-
-        projInvModalTitle.textContent = project.name;
-        linkInvestorForm.reset();
-        const allInvestors = await db.investors.toArray();
-        investorSelect.innerHTML = '<option value="">اختر مستثمراً...</option>';
-        allInvestors.forEach(inv => {
-            const option = document.createElement('option');
-            option.value = inv.id;
-            option.textContent = inv.name;
-            investorSelect.appendChild(option);
-        });
-        await renderLinkedInvestors(projectId);
-        projInvModal.classList.remove('hidden');
-    };
-
     const handleLinkInvestor = async (e) => {
         e.preventDefault();
-        const { investorSelect, investorShareInput, linkInvestorForm } = getElements();
         const investorId = Number(investorSelect.value);
         const share = Number(investorShareInput.value);
         if (!investorId || !currentManagingProjectId) return;
+
         try {
             await db.project_investors.add({
                 projectId: currentManagingProjectId,
@@ -159,7 +175,11 @@ document.addEventListener('DOMContentLoaded', () => {
             linkInvestorForm.reset();
         } catch (error) {
             console.error("Failed to link investor:", error);
-            alert(error.name === 'ConstraintError' ? 'هذا المستثمر مرتبط بالفعل بهذا المشروع.' : 'فشل ربط المستثمر.');
+            if (error.name === 'ConstraintError') {
+                alert('هذا المستثمر مرتبط بالفعل بهذا المشروع.');
+            } else {
+                alert('فشل ربط المستثمر.');
+            }
         }
     };
 
@@ -173,9 +193,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const handleTableClick = async (event) => {
+    closeProjInvBtn.addEventListener('click', () => projInvModal.classList.add('hidden'));
+    linkInvestorForm.addEventListener('submit', handleLinkInvestor);
+    projInvList.addEventListener('click', (e) => {
+        if (e.target.classList.contains('remove-investor-link-btn')) {
+            handleRemoveLink(Number(e.target.dataset.linkId));
+        }
+    });
+
+
+    tableBody.addEventListener('click', async (event) => {
         const target = event.target;
-        if (!target.dataset.id) return;
         const id = Number(target.dataset.id);
 
         if (target.classList.contains('edit-btn')) {
@@ -186,34 +214,15 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (target.classList.contains('manage-investors-btn')) {
             openManageInvestorsModal(id);
         }
-    };
+    });
 
-    // --- Initializer ---
-    const init = () => {
-        const { addBtn, cancelBtn, form, closeProjInvBtn, linkInvestorForm, projInvList, tableBody, projInvModal } = getElements();
-
-        addBtn.addEventListener('click', () => openModal());
-        cancelBtn.addEventListener('click', closeModal);
-        form.addEventListener('submit', handleFormSubmit);
-        closeProjInvBtn.addEventListener('click', () => projInvModal.classList.add('hidden'));
-        linkInvestorForm.addEventListener('submit', handleLinkInvestor);
-        projInvList.addEventListener('click', (e) => {
-            if (e.target.classList.contains('remove-investor-link-btn')) {
-                handleRemoveLink(Number(e.target.dataset.linkId));
-            }
-        });
-        tableBody.addEventListener('click', handleTableClick);
-
-        isInitialized = true;
-    };
-
-    // --- Page Load Event ---
     document.addEventListener('show', (e) => {
         if (e.detail.pageId === 'page-projects') {
-            if (!isInitialized) {
-                init();
-            }
             renderProjects();
         }
     });
+    } catch (error) {
+        console.error('Error initializing projects page:', error);
+        alert(`An initialization error occurred on the projects page: ${error.message}`);
+    }
 });
