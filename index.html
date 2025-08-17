@@ -745,12 +745,16 @@
              <div id="page-settlement-reports" class="hidden">
                 <h2 class="text-3xl font-bold mb-6">تقارير تسوية المشروعات</h2>
 
-                <div class="bg-white p-4 rounded-lg shadow-md mb-6 no-print flex justify-between items-end">
+                <div class="bg-white p-4 rounded-lg shadow-md mb-6 no-print flex flex-wrap justify-between items-end gap-4">
                     <div class="flex-grow">
-                        <label for="settlement-report-project-select" class="block text-sm font-medium text-gray-700 text-right">اختر المشروع لعرض تقاريره</label>
-                        <select id="settlement-report-project-select" class="mt-1 block w-full md:w-1/2 border-gray-300 rounded-md shadow-sm"></select>
+                        <label for="settlement-report-project-select" class="block text-sm font-medium text-gray-700 text-right">اختر المشروع</label>
+                        <select id="settlement-report-project-select" class="mt-1 block w-full md:w-auto border-gray-300 rounded-md shadow-sm"></select>
                     </div>
-                    <div class="space-x-2 space-x-reverse">
+                    <div class="flex-grow">
+                        <label for="historical-settlement-select" class="block text-sm font-medium text-gray-700 text-right">اختر التسوية لعرضها</label>
+                        <select id="historical-settlement-select" class="mt-1 block w-full md:w-auto border-gray-300 rounded-md shadow-sm"></select>
+                    </div>
+                    <div class="space-x-2 space-x-reverse self-end">
                         <button id="print-settlement-details-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                             طباعة التفاصيل
                         </button>

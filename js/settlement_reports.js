@@ -18,6 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const generateReports = async () => {
         const projectId = Number(projectSelect.value);
+        const selectedSettlementId = historicalSettlementSelect.value;
+
         settlementData = []; // Reset on each generation
         if (!projectId) {
             reportContent.classList.add('hidden');
@@ -25,126 +27,110 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // 1. Get all investors for the project
+            // 1. Get project investors and their names
             const projectInvestors = await db.project_investors.where({ projectId }).toArray();
             const investorIds = projectInvestors.map(pi => pi.investorId);
             const investors = await db.investors.bulkGet(investorIds);
             const investorMap = new Map(investors.filter(i => i).map(i => [i.id, i.name]));
 
-            // 2. Find the last settlement for this project
-            const lastSettlement = await db.project_settlements
-                .where({ projectId })
-                .reverse()
-                .sortBy('settlementDate');
-
-            const lastSettlementRecord = lastSettlement[0];
+            // 2. Determine the date range and previous balances based on selection
+            const allProjectSettlements = await db.project_settlements.where({ projectId }).reverse().sortBy('settlementDate');
             const previousContributions = new Map();
-            let startDate = new Date(0); // The beginning of time if no settlement exists
+            let startDate = new Date(0);
+            let endDate = null; // null means open-ended (for latest)
 
+            if (selectedSettlementId === 'latest') {
+                const lastSettlement = allProjectSettlements[0];
+                if (lastSettlement) {
+                    startDate = new Date(lastSettlement.settlementDate);
+                    lastSettlement.balances.forEach(item => previousContributions.set(item.investorId, item.balance));
+                }
+                executeSettlementBtn.style.display = 'block'; // Show execute button for latest
+            } else {
+                const settlementId = Number(selectedSettlementId);
+                const selectedIndex = allProjectSettlements.findIndex(s => s.id === settlementId);
+
+                if (selectedIndex !== -1) {
+                    const selectedSettlement = allProjectSettlements[selectedIndex];
+                    endDate = new Date(selectedSettlement.settlementDate);
+
+                    const previousSettlement = allProjectSettlements[selectedIndex + 1]; // The next one in reverse sorted array
+                    if (previousSettlement) {
+                        startDate = new Date(previousSettlement.settlementDate);
+                        previousSettlement.balances.forEach(item => previousContributions.set(item.investorId, item.balance));
+                    }
+                }
+                executeSettlementBtn.style.display = 'none'; // Hide execute button for historical
+            }
+
+            // 3. Display the "Previous Contribution" section
             const previousSettlementSummaryDiv = document.getElementById('previous-settlement-summary');
-            if (lastSettlementRecord) {
-                startDate = new Date(lastSettlementRecord.settlementDate);
-                // The 'balances' field in the snapshot now stores cumulative contributions
-                lastSettlementRecord.balances.forEach(item => {
-                    previousContributions.set(item.investorId, item.balance);
-                });
-
-                let summaryHtml = `<p class="mb-2"><strong>إجمالي المساهمات حتى تاريخ آخر تسوية (${lastSettlementRecord.settlementDate}):</strong></p><ul class="list-disc pr-5">`;
+            if (previousContributions.size > 0) {
+                let summaryHtml = `<p class="mb-2"><strong>إجمالي المساهمات حتى تاريخ ${startDate.toISOString().split('T')[0]}:</strong></p><ul class="list-disc pr-5">`;
                 investorIds.forEach(id => {
                     const balance = previousContributions.get(id) || 0;
                     summaryHtml += `<li>${investorMap.get(id) || 'غير معروف'}: <span class="font-bold">${formatCurrency(balance)}</span></li>`;
                 });
                 summaryHtml += '</ul>';
                 previousSettlementSummaryDiv.innerHTML = summaryHtml;
-
             } else {
-                previousSettlementSummaryDiv.innerHTML = '<p class="text-gray-500">لا توجد تسوية سابقة لهذا المشروع. هذه هي التسوية الأولى.</p>';
+                previousSettlementSummaryDiv.innerHTML = '<p class="text-gray-500">لا توجد مساهمات سابقة. هذه هي الفترة الأولى.</p>';
             }
 
-            // 3. Fetch all payment vouchers since the last settlement date
-            const paymentVouchers = await db.vouchers
-                .where('date').above(startDate.toISOString().split('T')[0])
-                .and(v => v.projectId === projectId && v.movementType === 'Payment' && v.paidByInvestorId)
-                .toArray();
+            // 4. Fetch vouchers for the determined period
+            let query = db.vouchers.where('date').above(startDate.toISOString().split('T')[0]);
+            if (endDate) {
+                query = query.and(v => v.date <= endDate.toISOString().split('T')[0]);
+            }
+            const paymentVouchers = await query.and(v => v.projectId === projectId && v.movementType === 'Payment' && v.paidByInvestorId).toArray();
 
-            // Normalize the data for settlement processing.
-            // Note: The settlement system only cares about expenses paid by investors.
-            // Internal settlement transactions are now just part of the balance snapshot.
+            // 5. Normalize and calculate period expenses
             const expenseVouchers = paymentVouchers.map(v => ({
-                projectId: v.projectId,
-                date: v.date,
-                amount: v.credit, // For a payment voucher, the amount is in the credit field
-                paidByInvestorId: v.paidByInvestorId,
-                // These fields are for compatibility with detailed report logic
-                categoryId: v.accountId,
-                partyId: v.partyId,
-                notes: v.description,
-                type: 'Expense' // Explicitly mark as an expense
+                amount: v.credit, paidByInvestorId: v.paidByInvestorId
             }));
             const totalPeriodExpenses = expenseVouchers.reduce((sum, v) => sum + v.amount, 0);
             totalExpensesSpan.textContent = formatCurrency(totalPeriodExpenses);
 
-            // 4. Calculate contribution for the current period from expenses
+            // 6. Calculate period contribution
             const periodContribution = new Map();
             expenseVouchers.forEach(v => {
                 const currentPaid = periodContribution.get(v.paidByInvestorId) || 0;
                 periodContribution.set(v.paidByInvestorId, currentPaid + v.amount);
             });
 
-            // Populate the "Investor Payments Report" (now shows PERIOD payments)
             investorExpensesTbody.innerHTML = '';
             investorIds.forEach(id => {
                 const totalPaid = periodContribution.get(id) || 0;
-                investorExpensesTbody.innerHTML += `
-                    <tr>
-                        <td class="px-5 py-3">${investorMap.get(id) || 'غير معروف'}</td>
-                        <td class="px-5 py-3">${formatCurrency(totalPaid)}</td>
-                    </tr>
-                `;
+                investorExpensesTbody.innerHTML += `<tr><td class="px-5 py-3">${investorMap.get(id) || 'غير معروف'}</td><td class="px-5 py-3">${formatCurrency(totalPaid)}</td></tr>`;
             });
 
-            // 5. Calculate final balances for the settlement screen
+            // 7. Calculate final balances for the settlement screen
             const totalShares = projectInvestors.reduce((sum, pi) => sum + (pi.share || 0), 0);
             const useEqualSplit = (totalShares < 0.99 || totalShares > 1.01);
-
             projectInvestors.forEach(pi => {
                 const settlementRatio = useEqualSplit && projectInvestors.length > 0 ? (1 / projectInvestors.length) : (pi.share || 0);
                 const currentPaid = periodContribution.get(pi.investorId) || 0;
                 const fairShare = totalPeriodExpenses * settlementRatio;
-
-                // The balance to be settled is based on the current period's activity ONLY.
                 const balanceForThisPeriod = currentPaid - fairShare;
 
                 settlementData.push({
                     investorId: pi.investorId,
                     investorName: investorMap.get(pi.investorId),
                     settlementRatio: `${(settlementRatio * 100).toFixed(2)}%`,
-                    fairShare: fairShare, // Their share of this period's expenses
-                    paid: currentPaid, // What they paid this period
-                    balance: balanceForThisPeriod // The final balance to be settled
+                    fairShare, paid: currentPaid, balance: balanceForThisPeriod
                 });
             });
 
-            // 6. Populate the final settlement table
+            // 8. Populate tables and settlement plan
             finalSettlementTbody.innerHTML = '';
             settlementData.forEach(data => {
                 const balanceClass = data.balance >= 0 ? 'text-green-600' : 'text-red-600';
-                finalSettlementTbody.innerHTML += `
-                    <tr>
-                        <td class="px-5 py-3">${data.investorName}</td>
-                        <td class="px-5 py-3">${data.settlementRatio}</td>
-                        <td class="px-5 py-3">${formatCurrency(data.fairShare)}</td>
-                        <td class="px-5 py-3">${formatCurrency(data.paid)}</td>
-                        <td class="px-5 py-3 font-bold ${balanceClass}">${formatCurrency(data.balance)}</td>
-                    </tr>
-                `;
+                finalSettlementTbody.innerHTML += `<tr><td class="px-5 py-3">${data.investorName}</td><td class="px-5 py-3">${data.settlementRatio}</td><td class="px-5 py-3">${formatCurrency(data.fairShare)}</td><td class="px-5 py-3">${formatCurrency(data.paid)}</td><td class="px-5 py-3 font-bold ${balanceClass}">${formatCurrency(data.balance)}</td></tr>`;
             });
 
-            // 7. Generate settlement plan
             let creditors = settlementData.filter(d => d.balance > 0).map(d => ({...d})).sort((a,b) => b.balance - a.balance);
             let debtors = settlementData.filter(d => d.balance < 0).map(d => ({...d, balance: -d.balance})).sort((a,b) => b.balance - a.balance);
             const transactions = [];
-
             while (creditors.length > 0 && debtors.length > 0) {
                 const creditor = creditors[0];
                 const debtor = debtors[0];
@@ -159,12 +145,12 @@ document.addEventListener('DOMContentLoaded', () => {
             settlementPlanList.innerHTML = '';
             if (transactions.length === 0) {
                 settlementPlanList.innerHTML = '<li>لا توجد تسويات مطلوبة.</li>';
-                executeSettlementBtn.disabled = true;
+                if (selectedSettlementId === 'latest') executeSettlementBtn.disabled = true;
             } else {
                 transactions.forEach(t => {
                     settlementPlanList.innerHTML += `<li>${t.from.investorName} يدفع ${formatCurrency(t.amount)} إلى ${t.to.investorName}</li>`;
                 });
-                executeSettlementBtn.disabled = false;
+                if (selectedSettlementId === 'latest') executeSettlementBtn.disabled = false;
             }
 
             reportContent.classList.remove('hidden');
@@ -249,6 +235,39 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const historicalSettlementSelect = document.getElementById('historical-settlement-select');
+
+    const populateSettlementHistoryDropdown = async (projectId) => {
+        historicalSettlementSelect.innerHTML = ''; // Clear previous options
+        if (!projectId) {
+            historicalSettlementSelect.disabled = true;
+            return;
+        }
+
+        try {
+            const settlements = await db.project_settlements.where({ projectId }).reverse().sortBy('settlementDate');
+            historicalSettlementSelect.disabled = false;
+
+            // Add option for the latest/current settlement
+            const latestOption = document.createElement('option');
+            latestOption.value = 'latest';
+            latestOption.textContent = 'تسوية جديدة / أحدث تسوية';
+            historicalSettlementSelect.appendChild(latestOption);
+
+            if (settlements.length > 0) {
+                settlements.forEach(s => {
+                    const option = document.createElement('option');
+                    option.value = s.id;
+                    option.textContent = `تسوية تاريخ: ${s.settlementDate}`;
+                    historicalSettlementSelect.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error("Failed to populate settlement history:", error);
+            historicalSettlementSelect.disabled = true;
+        }
+    };
+
     const initializePage = async () => {
         const projects = await db.projects.toArray();
         projectSelect.innerHTML = '<option value="">اختر مشروعاً...</option>';
@@ -258,9 +277,16 @@ document.addEventListener('DOMContentLoaded', () => {
             option.textContent = p.name;
             projectSelect.appendChild(option);
         });
+        await populateSettlementHistoryDropdown(null); // Initially disable
     };
 
-    projectSelect.addEventListener('change', generateReports);
+    projectSelect.addEventListener('change', async () => {
+        const projectId = Number(projectSelect.value);
+        await populateSettlementHistoryDropdown(projectId);
+        await generateReports(); // Trigger report generation
+    });
+
+    historicalSettlementSelect.addEventListener('change', generateReports);
     executeSettlementBtn.addEventListener('click', executeSettlement);
 
     finalSettlementPrintBtn.addEventListener('click', () => {
@@ -275,13 +301,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const generateAndPrintDetailedReport = async () => {
         const projectId = Number(projectSelect.value);
         const projectName = projectSelect.options[projectSelect.selectedIndex].text;
+        const selectedSettlementId = historicalSettlementSelect.value;
+
         if (!projectId) {
             alert("الرجاء اختيار مشروع أولاً.");
             return;
         }
 
         try {
-            // Fetch project investors, all investors for names, accounts, and parties
             const [projectInvestors, allInvestors, accounts, parties] = await Promise.all([
                 db.project_investors.where({ projectId }).toArray(),
                 db.investors.toArray(),
@@ -299,26 +326,43 @@ document.addEventListener('DOMContentLoaded', () => {
             const accountMap = new Map(accounts.map(a => [a.id, a.name]));
             const partyMap = new Map(parties.map(p => [p.id, p.name]));
 
-            // Find the last settlement for this project
-            const lastSettlement = await db.project_settlements.where({ projectId }).reverse().sortBy('settlementDate');
-            const lastSettlementRecord = lastSettlement[0];
+            // Determine date range based on selection
+            const allProjectSettlements = await db.project_settlements.where({ projectId }).reverse().sortBy('settlementDate');
             const previousBalances = new Map();
             let startDate = new Date(0);
+            let endDate = null;
 
-            if (lastSettlementRecord) {
-                startDate = new Date(lastSettlementRecord.settlementDate);
-                lastSettlementRecord.balances.forEach(item => {
-                    previousBalances.set(item.investorId, item.balance);
-                });
+            if (selectedSettlementId === 'latest') {
+                const lastSettlement = allProjectSettlements[0];
+                if (lastSettlement) {
+                    startDate = new Date(lastSettlement.settlementDate);
+                    lastSettlement.balances.forEach(item => previousBalances.set(item.investorId, item.balance));
+                }
+            } else {
+                const settlementId = Number(selectedSettlementId);
+                const selectedIndex = allProjectSettlements.findIndex(s => s.id === settlementId);
+                if (selectedIndex !== -1) {
+                    const selectedSettlement = allProjectSettlements[selectedIndex];
+                    endDate = new Date(selectedSettlement.settlementDate);
+                    const previousSettlement = allProjectSettlements[selectedIndex + 1];
+                    if (previousSettlement) {
+                        startDate = new Date(previousSettlement.settlementDate);
+                        previousSettlement.balances.forEach(item => previousBalances.set(item.investorId, item.balance));
+                    }
+                }
             }
 
-            // Fetch all payment vouchers since the last settlement date
-            const paymentVouchers = await db.vouchers
-                .where('date').above(startDate.toISOString().split('T')[0])
-                .and(v => v.projectId === projectId && v.movementType === 'Payment' && v.paidByInvestorId)
-                .toArray();
+            // Fetch vouchers for the determined period
+            let query = db.vouchers.where('date').above(startDate.toISOString().split('T')[0]);
+            if (endDate) {
+                query = query.and(v => v.date <= endDate.toISOString().split('T')[0]);
+            }
+            const paymentVouchers = await query.and(v => v.projectId === projectId && v.movementType === 'Payment' && v.paidByInvestorId).toArray();
 
-            let reportHtml = `<h1 class="text-2xl font-bold text-center mb-4">تقرير الحركات التفصيلي لمشروع: ${projectName}</h1>`;
+            let reportHtml = `<h1 class="text-2xl font-bold text-center mb-4">تقرير المصروفات التفصيلي لمشروع: ${projectName}</h1>`;
+            if(endDate) reportHtml += `<h2 class="text-lg text-center mb-4">للفترة من ${startDate.toISOString().split('T')[0]} إلى ${endDate.toISOString().split('T')[0]}</h2>`;
+            else reportHtml += `<h2 class="text-lg text-center mb-4">للفترة بعد تاريخ ${startDate.toISOString().split('T')[0]}</h2>`;
+
 
             for (const investorId of investorIds) {
                 const investorName = investorMap.get(investorId);
@@ -345,11 +389,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         <tr class="bg-gray-50 font-bold">
                             <td colspan="4" class="px-5 py-2 border-b text-right">رصيد المساهمة السابق</td>
                             <td class="px-5 py-2 border-b text-left">${formatCurrency(prevBalance)}</td>
-                        </tr>
-                    `;
+                        </tr>`;
 
                 let totalPaid = 0;
-
                 if (relatedVouchers.length === 0) {
                     reportHtml += `<tr><td colspan="5" class="text-center p-4">لا توجد مصروفات جديدة في هذه الفترة.</td></tr>`;
                 } else {
@@ -358,9 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const partyName = v.partyId ? partyMap.get(v.partyId) || '' : '';
                         const notes = v.description || '';
                         const paidAmount = v.credit;
-
                         totalPaid += paidAmount;
-
                         reportHtml += `<tr>
                             <td class="px-5 py-2 border-b">${v.date}</td>
                             <td class="px-5 py-2 border-b">${accountName}</td>
