@@ -220,8 +220,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const newCumulativeContributions = new Map();
             settlementData.forEach(d => {
                 const prevContribution = previousContributions.get(d.investorId) || 0;
-                const periodContribution = d.paid; // 'paid' in settlementData is the period's contribution
-                newCumulativeContributions.set(d.investorId, prevContribution + periodContribution);
+                const periodFairShare = d.fairShare; // Use the period's fair share for the new contribution
+                newCumulativeContributions.set(d.investorId, prevContribution + periodFairShare);
             });
 
             const newSettlementRecord = {
