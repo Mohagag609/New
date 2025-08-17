@@ -4,9 +4,10 @@
   "description": "Treasury Management Desktop App",
   "main": "dist/main/main.js",
   "scripts": {
-    "dev": "concurrently \"npm:dev:vite\" \"npm:dev:electron\"",
+    "dev": "npm run build:electron && concurrently \"npm:watch:electron\" \"npm:dev:vite\" \"npm:dev:electron\"",
+    "watch:electron": "tsc -p tsconfig.main.json -w",
     "dev:vite": "vite",
-    "dev:electron": "wait-on tcp:5173 && cross-env NODE_ENV=development electron .",
+    "dev:electron": "wait-on tcp:5173 dist/main/main.js && cross-env NODE_ENV=development electron .",
     "build": "npm run build:vite && npm run build:electron",
     "build:vite": "vite build",
     "build:electron": "tsc -p tsconfig.main.json",
