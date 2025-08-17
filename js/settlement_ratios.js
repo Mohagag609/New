@@ -66,7 +66,8 @@ document.addEventListener('DOMContentLoaded', () => {
                        class="ratio-input mt-1 block w-1/3 border-gray-300 rounded-md"
                        data-link-id="${link.id}"
                        value="${(link.share || 0) * 100}">
-                <span class="w-1/3">%</span>
+                <span class="w-1/4">%</span>
+                <button class="delete-ratio-btn text-red-500 hover:text-red-700 w-1/4 text-left" data-link-id="${link.id}">حذف</button>
             `;
             ratiosList.appendChild(div);
         });
@@ -145,6 +146,22 @@ document.addEventListener('DOMContentLoaded', () => {
     addInvestorForm.addEventListener('submit', handleAddInvestorToProject);
     saveBtn.addEventListener('click', handleSaveRatios);
     ratiosList.addEventListener('input', updateTotal);
+
+    ratiosList.addEventListener('click', async (e) => {
+        if (e.target.classList.contains('delete-ratio-btn')) {
+            const linkId = Number(e.target.dataset.linkId);
+            if (confirm('هل أنت متأكد من حذف هذا المستثمر من المشروع؟')) {
+                try {
+                    await db.project_investors.delete(linkId);
+                    // Refresh the view
+                    await handleProjectSelect();
+                } catch (error) {
+                    console.error('Failed to delete project investor link:', error);
+                    alert('فشل حذف المستثمر من المشروع.');
+                }
+            }
+        }
+    });
 
     document.addEventListener('show', (e) => {
         if (e.detail.pageId === 'page-settlement-ratios') {

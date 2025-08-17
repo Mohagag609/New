@@ -54,8 +54,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderVouchers = async () => {
         try {
-            // This page now shows Payment Vouchers that have an investor associated with them
-            const vouchers = await db.vouchers.where('paidByInvestorId').notEqual(null).reverse().toArray();
+            const currentProjectId = Number(localStorage.getItem('currentProjectId'));
+            if (!currentProjectId) {
+                tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4">الرجاء اختيار مشروع من القائمة الرئيسية أولاً.</td></tr>`;
+                return;
+            }
+
+            // This page now shows Payment Vouchers for the current project that have an investor associated with them
+            const vouchers = await db.vouchers
+                .where({ projectId: currentProjectId })
+                .and(v => v.paidByInvestorId != null)
+                .reverse()
+                .toArray();
 
             if (vouchers.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4">لا توجد مصروفات مسجلة على المستثمرين حالياً.</td></tr>`;

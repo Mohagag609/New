@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // --- Calculate Total Balance ---
             const [allCashboxes, allVouchers] = await Promise.all([
-                db.cashboxes.where({ projectId: currentProjectId }).toArray(),
+                db.cashboxes.toArray(), // Cashboxes are global, not project-specific
                 db.vouchers.where({ projectId: currentProjectId }).toArray()
             ]);
 
