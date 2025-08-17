@@ -90,25 +90,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 5. Normalize and calculate period expenses
             const expenseVouchers = paymentVouchers.map(v => ({
-                amount: v.credit, paidByInvestorId: v.paidByInvestorId
+                date: v.date,
+                amount: v.credit,
+                paidByInvestorId: v.paidByInvestorId,
+                description: v.description,
             }));
             const totalPeriodExpenses = expenseVouchers.reduce((sum, v) => sum + v.amount, 0);
-            totalExpensesSpan.textContent = formatCurrency(totalPeriodExpenses);
+            document.getElementById('settlement-total-expenses').textContent = formatCurrency(totalPeriodExpenses);
 
-            // 6. Calculate period contribution
+            // 6. Populate the Period Expenses table
+            const periodExpensesBody = document.getElementById('period-expenses-body');
+            periodExpensesBody.innerHTML = '';
+            if (expenseVouchers.length === 0) {
+                periodExpensesBody.innerHTML = `<tr><td colspan="4" class="text-center p-4">لا توجد مصروفات في هذه الفترة.</td></tr>`;
+            } else {
+                expenseVouchers.forEach(v => {
+                    periodExpensesBody.innerHTML += `
+                        <tr>
+                            <td class="px-5 py-3 border-b">${v.date}</td>
+                            <td class="px-5 py-3 border-b">${v.description}</td>
+                            <td class="px-5 py-3 border-b">${investorMap.get(v.paidByInvestorId) || 'صندوق المشروع'}</td>
+                            <td class="px-5 py-3 border-b">${formatCurrency(v.amount)}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            // 7. Calculate period contribution and final balances
             const periodContribution = new Map();
             expenseVouchers.forEach(v => {
-                const currentPaid = periodContribution.get(v.paidByInvestorId) || 0;
-                periodContribution.set(v.paidByInvestorId, currentPaid + v.amount);
+                if (v.paidByInvestorId) {
+                    const currentPaid = periodContribution.get(v.paidByInvestorId) || 0;
+                    periodContribution.set(v.paidByInvestorId, currentPaid + v.amount);
+                }
             });
 
-            investorExpensesTbody.innerHTML = '';
-            investorIds.forEach(id => {
-                const totalPaid = periodContribution.get(id) || 0;
-                investorExpensesTbody.innerHTML += `<tr><td class="px-5 py-3">${investorMap.get(id) || 'غير معروف'}</td><td class="px-5 py-3">${formatCurrency(totalPaid)}</td></tr>`;
-            });
-
-            // 7. Calculate final balances for the settlement screen
             const totalShares = projectInvestors.reduce((sum, pi) => sum + (pi.share || 0), 0);
             const useEqualSplit = (totalShares < 0.99 || totalShares > 1.01);
             projectInvestors.forEach(pi => {
@@ -120,16 +136,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 settlementData.push({
                     investorId: pi.investorId,
                     investorName: investorMap.get(pi.investorId),
-                    settlementRatio: `${(settlementRatio * 100).toFixed(2)}%`,
-                    fairShare, paid: currentPaid, balance: balanceForThisPeriod
+                    fairShare,
+                    paid: currentPaid,
+                    balance: balanceForThisPeriod
                 });
             });
 
-            // 8. Populate tables and settlement plan
+            // 8. Populate the final settlement calculation table
             finalSettlementTbody.innerHTML = '';
             settlementData.forEach(data => {
                 const balanceClass = data.balance >= 0 ? 'text-green-600' : 'text-red-600';
-                finalSettlementTbody.innerHTML += `<tr><td class="px-5 py-3">${data.investorName}</td><td class="px-5 py-3">${data.settlementRatio}</td><td class="px-5 py-3">${formatCurrency(data.fairShare)}</td><td class="px-5 py-3">${formatCurrency(data.paid)}</td><td class="px-5 py-3 font-bold ${balanceClass}">${formatCurrency(data.balance)}</td></tr>`;
+                finalSettlementTbody.innerHTML += `
+                    <tr>
+                        <td class="px-5 py-3 border-b">${data.investorName}</td>
+                        <td class="px-5 py-3 border-b">${formatCurrency(data.paid)}</td>
+                        <td class="px-5 py-3 border-b">${formatCurrency(data.fairShare)}</td>
+                        <td class="px-5 py-3 border-b font-bold ${balanceClass}">${formatCurrency(data.balance)}</td>
+                    </tr>
+                `;
             });
 
             let creditors = settlementData.filter(d => d.balance > 0).map(d => ({...d})).sort((a,b) => b.balance - a.balance);
