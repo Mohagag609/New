@@ -4,13 +4,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- DOM Elements ---
     const addExpenseBtn = document.getElementById('add-project-expense-btn');
+    const addReceiptBtn = document.getElementById('add-project-receipt-btn');
     const modal = document.getElementById('project-expense-modal');
+    const modalTitle = document.getElementById('project-expense-modal-title');
     const cancelBtn = document.getElementById('cancel-pe-btn');
     const form = document.getElementById('project-expense-form');
     const tableBody = document.getElementById('project-expenses-table-body');
 
     // Form fields
-    const idInput = document.getElementById('project-expense-id');
     const projectSelect = document.getElementById('pe-project-select');
     const dateInput = document.getElementById('pe-date');
     const investorSelect = document.getElementById('pe-investor-select');
@@ -29,8 +30,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const openModal = async () => {
+    const openModal = async (type = 'expense') => {
         form.reset();
+        const accountRow = accountSelect.closest('#pe-account-row');
+
+        if (type === 'expense') {
+            modalTitle.textContent = 'إضافة مصروف مشروع';
+            if (accountRow) accountRow.classList.remove('hidden');
+        } else {
+            modalTitle.textContent = 'إضافة سند قبض من مستثمر';
+            if (accountRow) accountRow.classList.add('hidden');
+        }
+
+        form.dataset.type = type;
 
         await Promise.all([
             populateSelect(projectSelect, () => db.projects.toArray()),
@@ -48,16 +60,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderVouchers = async () => {
         try {
-            const vouchers = await db.vouchers.where('paidByInvestorId').above(0).reverse().toArray();
+            const vouchers = await db.vouchers
+                .filter(v => v.movementType === 'Project Expense' || v.movementType === 'Investor Receipt')
+                .reverse()
+                .toArray();
 
             if (vouchers.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4">لا توجد سندات حالياً.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4">لا توجد حركات حالياً.</td></tr>`;
                 return;
             }
 
             const projectIds = [...new Set(vouchers.map(v => v.projectId))];
             const investorIds = [...new Set(vouchers.map(v => v.paidByInvestorId))];
-            const accountIds = [...new Set(vouchers.map(v => v.accountId))];
+            const accountIds = [...new Set(vouchers.map(v => v.accountId).filter(id => id > 0))];
 
             const [projects, investors, accounts] = await Promise.all([
                 db.projects.bulkGet(projectIds),
@@ -72,12 +87,14 @@ document.addEventListener('DOMContentLoaded', () => {
             tableBody.innerHTML = '';
             vouchers.forEach(v => {
                 const row = document.createElement('tr');
+                const amount = v.movementType === 'Project Expense' ? v.debit : v.credit;
+                const typeText = v.movementType === 'Project Expense' ? 'مصروف' : 'قبض';
                 row.innerHTML = `
                     <td class="px-5 py-3">${projectMap.get(v.projectId) || ''}</td>
                     <td class="px-5 py-3">${v.date}</td>
                     <td class="px-5 py-3">${investorMap.get(v.paidByInvestorId) || ''}</td>
-                    <td class="px-5 py-3">${accountMap.get(v.accountId) || ''}</td>
-                    <td class="px-5 py-3">${v.debit}</td>
+                    <td class="px-5 py-3">${accountMap.get(v.accountId) || typeText}</td>
+                    <td class="px-5 py-3">${formatCurrency(amount)}</td>
                     <td class="px-5 py-3">
                         <button class="delete-btn text-red-500" data-id="${v.id}">حذف</button>
                     </td>
@@ -85,42 +102,65 @@ document.addEventListener('DOMContentLoaded', () => {
                 tableBody.appendChild(row);
             });
         } catch (error) {
-            console.error('Failed to render project expenses:', error);
+            console.error('Failed to render project transactions:', error);
         }
     };
 
     const handleFormSubmit = async (event) => {
         event.preventDefault();
-        const voucherData = {
-            voucherNo: `PROJ-EXP-${Date.now()}`,
+        const type = form.dataset.type || 'expense';
+
+        const baseData = {
+            voucherNo: `PROJ-${type.toUpperCase()}-${Date.now()}`,
             projectId: Number(projectSelect.value),
             date: dateInput.value,
             paidByInvestorId: Number(investorSelect.value),
-            accountId: Number(accountSelect.value),
-            debit: Number(amountInput.value),
-            credit: 0,
             description: notesInput.value.trim(),
-            movementType: 'Project Expense',
             cashboxId: 0,
         };
 
-        if (!voucherData.projectId || !voucherData.paidByInvestorId || !voucherData.accountId || !voucherData.debit) {
-            alert('الرجاء ملء جميع الحقول المطلوبة.');
-            return;
+        let voucherData;
+        if (type === 'expense') {
+            voucherData = {
+                ...baseData,
+                accountId: Number(accountSelect.value),
+                debit: Number(amountInput.value),
+                credit: 0,
+                movementType: 'Project Expense',
+            };
+            if (!voucherData.accountId || !voucherData.debit) {
+                return alert('الرجاء ملء جميع الحقول المطلوبة للمصروف.');
+            }
+        } else { // Receipt
+            voucherData = {
+                ...baseData,
+                accountId: 0,
+                debit: 0,
+                credit: Number(amountInput.value),
+                movementType: 'Investor Receipt',
+            };
+            if (!voucherData.credit) {
+                return alert('الرجاء إدخال مبلغ صحيح للإيصال.');
+            }
+        }
+
+        if (!voucherData.projectId || !voucherData.paidByInvestorId) {
+            return alert('الرجاء اختيار مشروع ومستثمر.');
         }
 
         try {
             await db.vouchers.add(voucherData);
-            alert('تم حفظ سند الصرف بنجاح.');
+            alert('تم حفظ السند بنجاح.');
             closeModal();
             renderVouchers();
         } catch (error) {
-            console.error('Failed to save project expense voucher:', error);
+            console.error('Failed to save project voucher:', error);
             alert('حدث خطأ أثناء حفظ السند.');
         }
     };
 
-    addExpenseBtn.addEventListener('click', () => openModal());
+    addExpenseBtn.addEventListener('click', () => openModal('expense'));
+    addReceiptBtn.addEventListener('click', () => openModal('receipt'));
     cancelBtn.addEventListener('click', closeModal);
     form.addEventListener('submit', handleFormSubmit);
 

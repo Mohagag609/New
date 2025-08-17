@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalExpensesSpan = document.getElementById('settlement-total-expenses');
     const finalSettlementTbody = document.getElementById('final-settlement-report-body');
     const settlementPlanList = document.getElementById('settlement-plan-list');
+    const executionNotice = document.getElementById('settlement-execution-notice');
 
     let settlementData = [];
 
@@ -25,34 +26,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            const lastSettlement = await db.project_settlements
-                .where('projectId').equals(projectId)
-                .last();
+            const lastSettlement = await db.project_settlements.where('projectId').equals(projectId).last();
+            const lastSettlementDate = lastSettlement ? lastSettlement.settlementDate : '1970-01-01';
 
-            let lastSettlementDate = '1970-01-01';
-            let previousBalances = new Map();
-
+            const previousBalances = new Map();
             if (lastSettlement) {
-                lastSettlementDate = lastSettlement.settlementDate;
-                lastSettlement.investorBalances.forEach(b => {
-                    previousBalances.set(b.investorId, b.balance);
-                });
+                lastSettlement.investorBalances.forEach(b => previousBalances.set(b.investorId, b.balance));
             }
 
-            const expenseVouchers = await db.vouchers
-                .where('[projectId+date]').above([projectId, lastSettlementDate])
-                .toArray();
+            const periodVouchers = await db.vouchers.where('[projectId+date]').above([projectId, lastSettlementDate]).toArray();
 
             const projectInvestors = await db.project_investors.where({ projectId }).toArray();
             const investorIds = [...new Set(projectInvestors.map(pi => pi.investorId))];
             const investors = await db.investors.bulkGet(investorIds);
             const investorMap = new Map(investors.filter(Boolean).map(i => [i.id, i.name]));
 
-            const totalPeriodExpenses = expenseVouchers.reduce((sum, v) => sum + (v.debit || 0), 0);
-            totalExpensesSpan.textContent = formatCurrency(totalPeriodExpenses);
-
             const paidInPeriod = new Map();
-            expenseVouchers.forEach(v => {
+            periodVouchers.forEach(v => {
                 if (v.paidByInvestorId) {
                     const currentPaid = paidInPeriod.get(v.paidByInvestorId) || 0;
                     const amount = (v.credit || 0) + (v.debit || 0);
@@ -60,15 +50,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
+            const totalPeriodExpenses = periodVouchers
+                .filter(v => v.movementType === 'Project Expense')
+                .reduce((sum, v) => sum + (v.debit || 0), 0);
+            totalExpensesSpan.textContent = formatCurrency(totalPeriodExpenses);
+
             investorExpensesTbody.innerHTML = '';
             investorMap.forEach((name, id) => {
                 const totalPaid = (previousBalances.get(id) || 0) + (paidInPeriod.get(id) || 0);
-                 investorExpensesTbody.innerHTML += `
-                    <tr>
-                        <td class="px-5 py-3">${name}</td>
-                        <td class="px-5 py-3">${formatCurrency(totalPaid)}</td>
-                    </tr>
-                `;
+                investorExpensesTbody.innerHTML += `<tr><td class="px-5 py-3">${name}</td><td class="px-5 py-3">${formatCurrency(totalPaid)}</td></tr>`;
             });
 
             const totalShares = projectInvestors.reduce((sum, pi) => sum + (pi.share || 0), 0);
@@ -79,28 +69,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const totalPaid = (previousBalances.get(pi.investorId) || 0) + (paidInPeriod.get(pi.investorId) || 0);
                 const fairShare = totalPeriodExpenses * settlementRatio;
                 const balance = totalPaid - fairShare;
-                settlementData.push({
-                    investorId: pi.investorId,
-                    investorName: investorMap.get(pi.investorId),
-                    settlementRatio: `${(settlementRatio * 100).toFixed(2)}%`,
-                    fairShare,
-                    paid: totalPaid,
-                    balance
-                });
+                settlementData.push({ investorId: pi.investorId, investorName: investorMap.get(pi.investorId), settlementRatio: `${(settlementRatio * 100).toFixed(2)}%`, fairShare, paid: totalPaid, balance });
             });
 
             finalSettlementTbody.innerHTML = '';
             settlementData.forEach(data => {
                 const balanceClass = data.balance >= 0 ? 'text-green-600' : 'text-red-600';
-                finalSettlementTbody.innerHTML += `
-                    <tr>
-                        <td class="px-5 py-3">${data.investorName}</td>
-                        <td class="px-5 py-3">${data.settlementRatio}</td>
-                        <td class="px-5 py-3">${formatCurrency(data.fairShare)}</td>
-                        <td class="px-5 py-3">${formatCurrency(data.paid)}</td>
-                        <td class="px-5 py-3 font-bold ${balanceClass}">${formatCurrency(data.balance)}</td>
-                    </tr>
-                `;
+                finalSettlementTbody.innerHTML += `<tr><td class="px-5 py-3">${data.investorName}</td><td class="px-5 py-3">${data.settlementRatio}</td><td class="px-5 py-3">${formatCurrency(data.fairShare)}</td><td class="px-5 py-3">${formatCurrency(data.paid)}</td><td class="px-5 py-3 font-bold ${balanceClass}">${formatCurrency(data.balance)}</td></tr>`;
             });
 
             let creditors = settlementData.filter(d => d.balance > 0).map(d => ({...d})).sort((a,b) => b.balance - a.balance);
@@ -119,6 +94,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             settlementPlanList.innerHTML = '';
+            executionNotice.textContent = '';
+            executeSettlementBtn.disabled = false;
+
             if (transactions.length === 0) {
                 settlementPlanList.innerHTML = '<li>لا توجد تسويات مطلوبة.</li>';
                 executeSettlementBtn.disabled = true;
@@ -126,9 +104,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 transactions.forEach(t => {
                     settlementPlanList.innerHTML += `<li>${t.from.investorName} يدفع ${formatCurrency(t.amount)} إلى ${t.to.investorName}</li>`;
                 });
-                executeSettlementBtn.disabled = false;
+                const lastExpenseDate = periodVouchers.reduce((max, v) => v.date > max ? v.date : max, '1970-01-01');
+                const today = new Date();
+                const lastDate = new Date(lastExpenseDate);
+                today.setHours(0, 0, 0, 0);
+                lastDate.setHours(0, 0, 0, 0);
+                if (today <= lastDate) {
+                    executeSettlementBtn.disabled = true;
+                    executionNotice.textContent = 'لا يمكن تنفيذ التسوية إلا في اليوم التالي لآخر مصروف.';
+                }
             }
-
             reportContent.classList.remove('hidden');
         } catch (error) {
             console.error('Failed to generate settlement reports:', error);
@@ -137,24 +122,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const executeSettlement = async () => {
         if (executeSettlementBtn.disabled || settlementData.length === 0) return;
-
         const confirmation = confirm("هل أنت متأكد من تنفيذ وحفظ هذه التسوية؟ سيتم أرشفة جميع الحركات الحالية وتصبح نقطة البداية للتسوية القادمة.");
         if (!confirmation) return;
 
         const projectId = Number(projectSelect.value);
         const today = new Date().toISOString().split('T')[0];
-
         const totalExpenses = settlementData.reduce((sum, d) => sum + d.fairShare, 0);
 
         const settlementRecord = {
             projectId: projectId,
             settlementDate: today,
             totalExpensesSettled: totalExpenses,
-            investorBalances: settlementData.map(d => ({
-                investorId: d.investorId,
-                investorName: d.investorName,
-                balance: d.paid
-            }))
+            investorBalances: settlementData.map(d => ({ investorId: d.investorId, investorName: d.investorName, balance: d.paid }))
         };
 
         try {
@@ -184,20 +163,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     finalSettlementPrintBtn.addEventListener('click', () => {
         const projectName = projectSelect.options[projectSelect.selectedIndex].text;
-        if (!projectName) {
-            alert("الرجاء اختيار مشروع أولاً.");
-            return;
-        }
+        if (!projectName) return alert("الرجاء اختيار مشروع أولاً.");
         printContent('final-settlement-div', `التسوية النهائية - ${projectName}`);
     });
 
     const generateAndPrintDetailedReport = async () => {
         const projectId = Number(projectSelect.value);
         const projectName = projectSelect.options[projectSelect.selectedIndex].text;
-        if (!projectId) {
-            alert("الرجاء اختيار مشروع أولاً.");
-            return;
-        }
+        if (!projectId) return alert("الرجاء اختيار مشروع أولاً.");
 
         try {
             const [vouchers, accounts, parties, projectInvestors] = await Promise.all([
@@ -208,18 +181,15 @@ document.addEventListener('DOMContentLoaded', () => {
             ]);
 
             const investorIds = [...new Set(projectInvestors.map(pi => pi.investorId))];
-            if (investorIds.length === 0) {
-                alert("لا يوجد مستثمرون مرتبطون بهذا المشروع.");
-                return;
-            }
-            const investors = await db.investors.bulkGet(investorIds);
+            if (investorIds.length === 0) return alert("لا يوجد مستثمرون مرتبطون بهذا المشروع.");
 
+            const investors = await db.investors.bulkGet(investorIds);
             const investorMap = new Map(investors.map(i => [i.id, i.name]));
             const accountMap = new Map(accounts.map(a => [a.id, a.name]));
             const partyMap = new Map(parties.map(p => [p.id, p.name]));
-
             const vouchersByInvestor = new Map();
             investors.forEach(inv => vouchersByInvestor.set(inv.id, []));
+
             vouchers.filter(v => v.movementType === 'Project Expense').forEach(v => {
                 if (vouchersByInvestor.has(v.paidByInvestorId)) {
                     vouchersByInvestor.get(v.paidByInvestorId).push(v);
@@ -230,54 +200,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
             for (const [investorId, investorVouchers] of vouchersByInvestor.entries()) {
                 const investorName = investorMap.get(investorId);
-                reportHtml += `<div class="mb-8" style="page-break-after: always;">`;
-                reportHtml += `<h2 class="text-xl font-bold border-b-2 border-gray-300 pb-2 mb-4">المستثمر: ${investorName}</h2>`;
-
+                reportHtml += `<div class="mb-8" style="page-break-after: always;"><h2 class="text-xl font-bold border-b-2 border-gray-300 pb-2 mb-4">المستثمر: ${investorName}</h2>`;
                 if (investorVouchers.length === 0) {
                     reportHtml += `<p>لا توجد مصروفات مسجلة لهذا المستثمر.</p>`;
                 } else {
-                    reportHtml += `<table class="min-w-full leading-normal" style="width: 100%; border-collapse: collapse;">
-                        <thead>
-                            <tr>
-                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">التاريخ</th>
-                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">الحساب</th>
-                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">المورد</th>
-                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">البيان</th>
-                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">المبلغ</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
-
+                    reportHtml += `<table class="min-w-full leading-normal" style="width: 100%; border-collapse: collapse;"><thead><tr><th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">التاريخ</th><th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">الحساب</th><th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">المورد</th><th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">البيان</th><th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">المبلغ</th></tr></thead><tbody>`;
                     let total = 0;
                     investorVouchers.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(v => {
                         const accountName = accountMap.get(v.accountId) || 'غير معروف';
                         const partyName = v.partyId ? partyMap.get(v.partyId) || 'غير معروف' : '';
-
-                        reportHtml += `<tr>
-                            <td class="px-5 py-2 border-b">${v.date}</td>
-                            <td class="px-5 py-2 border-b">${accountName}</td>
-                            <td class="px-5 py-2 border-b">${partyName}</td>
-                            <td class="px-5 py-2 border-b">${v.description || ''}</td>
-                            <td class="px-5 py-2 border-b text-left">${formatCurrency(v.debit)}</td>
-                        </tr>`;
+                        reportHtml += `<tr><td class="px-5 py-2 border-b">${v.date}</td><td class="px-5 py-2 border-b">${accountName}</td><td class="px-5 py-2 border-b">${partyName}</td><td class="px-5 py-2 border-b">${v.description || ''}</td><td class="px-5 py-2 border-b text-left">${formatCurrency(v.debit)}</td></tr>`;
                         total += v.debit;
                     });
-
-                    reportHtml += `</tbody>
-                        <tfoot>
-                            <tr>
-                                <td colspan="4" class="px-5 py-2 border-t-2 font-bold text-right">الإجمالي</td>
-                                <td class="px-5 py-2 border-t-2 font-bold text-left">${formatCurrency(total)}</td>
-                            </tr>
-                        </tfoot>
-                    </table>`;
+                    reportHtml += `</tbody><tfoot><tr><td colspan="4" class="px-5 py-2 border-t-2 font-bold text-right">الإجمالي</td><td class="px-5 py-2 border-t-2 font-bold text-left">${formatCurrency(total)}</td></tr></tfoot></table>`;
                 }
                 reportHtml += `</div>`;
             }
-
             detailedPrintArea.innerHTML = reportHtml;
             printContent('detailed-print-area', `تقرير تفصيلي - ${projectName}`);
-
         } catch (error) {
             console.error('Failed to generate detailed report:', error);
             alert('حدث خطأ أثناء إنشاء التقرير التفصيلي.');
