@@ -42,7 +42,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (selectedSettlementId === 'latest') {
                 const lastSettlement = allProjectSettlements[0];
                 if (lastSettlement) {
-                    startDate = new Date(lastSettlement.settlementDate);
+                    const lastSettlementDate = new Date(lastSettlement.settlementDate);
+                    lastSettlementDate.setUTCDate(lastSettlementDate.getUTCDate() + 1); // Start from the day after
+                    startDate = lastSettlementDate;
                     lastSettlement.balances.forEach(item => previousContributions.set(item.investorId, item.balance));
                 }
                 executeSettlementBtn.style.display = 'block'; // Show execute button for latest
@@ -56,7 +58,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const previousSettlement = allProjectSettlements[selectedIndex + 1]; // The next one in reverse sorted array
                     if (previousSettlement) {
-                        startDate = new Date(previousSettlement.settlementDate);
+                        const prevSettlementDate = new Date(previousSettlement.settlementDate);
+                        prevSettlementDate.setUTCDate(prevSettlementDate.getUTCDate() + 1);
+                        startDate = prevSettlementDate;
                         previousSettlement.balances.forEach(item => previousContributions.set(item.investorId, item.balance));
                     }
                 }
@@ -78,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // 4. Fetch vouchers for the determined period
-            let query = db.vouchers.where('date').above(startDate.toISOString().split('T')[0]);
+            let query = db.vouchers.where('date').aboveOrEqual(startDate.toISOString().split('T')[0]);
             if (endDate) {
                 query = query.and(v => v.date <= endDate.toISOString().split('T')[0]);
             }
@@ -325,7 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const accountMap = new Map(accounts.map(a => [a.id, a.name]));
             const partyMap = new Map(parties.map(p => [p.id, p.name]));
 
-            // Determine date range based on selection
+            // Determine date range based on selection, same logic as generateReports
             const allProjectSettlements = await db.project_settlements.where({ projectId }).reverse().sortBy('settlementDate');
             const previousBalances = new Map();
             let startDate = new Date(0);
@@ -334,7 +338,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (selectedSettlementId === 'latest') {
                 const lastSettlement = allProjectSettlements[0];
                 if (lastSettlement) {
-                    startDate = new Date(lastSettlement.settlementDate);
+                    const lastSettlementDate = new Date(lastSettlement.settlementDate);
+                    lastSettlementDate.setUTCDate(lastSettlementDate.getUTCDate() + 1);
+                    startDate = lastSettlementDate;
                     lastSettlement.balances.forEach(item => previousBalances.set(item.investorId, item.balance));
                 }
             } else {
@@ -345,14 +351,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     endDate = new Date(selectedSettlement.settlementDate);
                     const previousSettlement = allProjectSettlements[selectedIndex + 1];
                     if (previousSettlement) {
-                        startDate = new Date(previousSettlement.settlementDate);
+                        const prevSettlementDate = new Date(previousSettlement.settlementDate);
+                        prevSettlementDate.setUTCDate(prevSettlementDate.getUTCDate() + 1);
+                        startDate = prevSettlementDate;
                         previousSettlement.balances.forEach(item => previousBalances.set(item.investorId, item.balance));
                     }
                 }
             }
 
             // Fetch vouchers for the determined period
-            let query = db.vouchers.where('date').above(startDate.toISOString().split('T')[0]);
+            let query = db.vouchers.where('date').aboveOrEqual(startDate.toISOString().split('T')[0]);
             if (endDate) {
                 query = query.and(v => v.date <= endDate.toISOString().split('T')[0]);
             }
