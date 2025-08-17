@@ -39,7 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 row.innerHTML = `
                     <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">${inv.name}</td>
                     <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                        <button class="details-btn bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded" data-id="${inv.id}">التفاصيل</button>
                         <button class="edit-btn bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded" data-id="${inv.id}">تعديل</button>
                         <button class="delete-btn bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded" data-id="${inv.id}">حذف</button>
                     </td>
@@ -84,7 +83,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const handleDelete = async (id) => {
-        if (!confirm('هل أنت متأكد أنك تريد حذف هذا المستثمر؟')) return;
+        // A real app should check for links to projects before deleting.
+        if (!confirm('هل أنت متأكد أنك تريد حذف هذا المستثمر؟')) {
+            return;
+        }
         try {
             await db.investors.delete(id);
             alert('تم حذف المستثمر.');
@@ -94,66 +96,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const detailsModal = document.getElementById('investor-details-modal');
-    const openDetailsModal = async (investorId) => {
-        if (!detailsModal) return;
-        const investor = await db.investors.get(investorId);
-        if (!investor) return;
-
-        const detailsModalTitle = document.getElementById('investor-details-modal-title');
-        const detailsModalBody = document.getElementById('investor-details-modal-body');
-
-        detailsModalTitle.textContent = `تفاصيل مستثمر: ${investor.name}`;
-
-        const ratios = await db.settlementRatios.where({ investorId }).toArray();
-        const projectIds = ratios.map(r => r.projectId);
-        const projects = await db.projects.where('id').anyOf(projectIds).toArray();
-        const projectsById = projects.reduce((acc, p) => ({ ...acc, [p.id]: p }), {});
-
-        detailsModalBody.innerHTML = '';
-        if (ratios.length > 0) {
-            const list = document.createElement('ul');
-            list.className = 'list-disc space-y-2 pl-5';
-            ratios.forEach(ratio => {
-                const project = projectsById[ratio.projectId];
-                if(project) {
-                    const listItem = document.createElement('li');
-                    listItem.textContent = `مشروع: ${project.name} - نسبة: ${ratio.ratio * 100}%`;
-                    list.appendChild(listItem);
-                }
-            });
-            detailsModalBody.appendChild(list);
-        } else {
-            detailsModalBody.textContent = 'لا توجد مشاريع مرتبطة بهذا المستثمر.';
-        }
-        detailsModal.classList.remove('hidden');
-    };
-
-    const closeDetailsModal = () => {
-        if (detailsModal) detailsModal.classList.add('hidden');
-    };
-
-    const detailsCancelBtn = document.getElementById('cancel-investor-details-btn');
-    if (detailsCancelBtn) {
-        detailsCancelBtn.addEventListener('click', closeDetailsModal);
-    }
-
     addBtn.addEventListener('click', () => openModal());
     cancelBtn.addEventListener('click', closeModal);
     form.addEventListener('submit', handleFormSubmit);
 
     tableBody.addEventListener('click', async (event) => {
         const target = event.target;
-        if (!target.dataset.id) return;
         const id = Number(target.dataset.id);
 
         if (target.classList.contains('edit-btn')) {
             const investor = await db.investors.get(id);
             if (investor) openModal(investor);
-        } else if (target.classList.contains('delete-btn')) {
+        }
+
+        if (target.classList.contains('delete-btn')) {
             handleDelete(id);
-        } else if (target.classList.contains('details-btn')) {
-            openDetailsModal(id);
         }
     });
 
