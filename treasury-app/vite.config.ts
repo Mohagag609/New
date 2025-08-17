@@ -1,18 +1,19 @@
-import { defineConfig } from 'vite'
-import path from 'node:path'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite';
+import path from 'node:path';
+import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  root: path.resolve(__dirname, 'src/renderer'),
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src/renderer'),
+      '@': path.resolve(__dirname, 'src/renderer'),
     },
   },
   build: {
-    outDir: 'dist/renderer',
+    outDir: path.resolve(__dirname, 'dist/renderer'),
     emptyOutDir: true,
   },
-  base: './', // Use relative paths for assets
-})
+  base: './', // Use relative paths for assets in the built HTML
+});
