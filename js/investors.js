@@ -1,75 +1,136 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const page = document.getElementById('page-investors');
-    if (!page) return;
+    let isInitialized = false;
 
-    // --- DOM Elements ---
-    const addBtn = document.getElementById('add-investor-btn');
-    const modal = document.getElementById('investor-modal');
-    const modalTitle = document.getElementById('investor-modal-title');
-    const cancelBtn = document.getElementById('cancel-investor-btn');
-    const form = document.getElementById('investor-form');
-    const tableBody = document.getElementById('investors-table-body');
+    const init = () => {
+        isInitialized = true;
 
-    const idInput = document.getElementById('investor-id');
-    const nameInput = document.getElementById('investor-name');
+        // --- DOM Elements ---
+        const addBtn = document.getElementById('add-investor-btn');
+        const modal = document.getElementById('investor-modal');
+        const modalTitle = document.getElementById('investor-modal-title');
+        const cancelBtn = document.getElementById('cancel-investor-btn');
+        const form = document.getElementById('investor-form');
+        const tableBody = document.getElementById('investors-table-body');
+        const idInput = document.getElementById('investor-id');
+        const nameInput = document.getElementById('investor-name');
+        const detailsModal = document.getElementById('investor-details-modal');
+        const detailsModalTitle = document.getElementById('investor-details-modal-title');
+        const detailsModalBody = document.getElementById('investor-details-modal-body');
+        const detailsCancelBtn = document.getElementById('cancel-investor-details-btn');
 
-    const detailsModal = document.getElementById('investor-details-modal');
-    const detailsModalTitle = document.getElementById('investor-details-modal-title');
-    const detailsModalBody = document.getElementById('investor-details-modal-body');
-    const detailsCancelBtn = document.getElementById('cancel-investor-details-btn');
+        // --- Functions ---
+        const openDetailsModal = async (investor) => {
+            detailsModalTitle.textContent = `تفاصيل مستثمر: ${investor.name}`;
 
-    const openDetailsModal = async (investor) => {
-        detailsModalTitle.textContent = `تفاصيل مستثمر: ${investor.name}`;
+            const ratios = await db.settlementRatios.where({ investorId: investor.id }).toArray();
+            const projectIds = ratios.map(r => r.projectId);
+            const projects = await db.projects.where('id').anyOf(projectIds).toArray();
+            const projectsById = projects.reduce((acc, p) => ({ ...acc, [p.id]: p }), {});
 
-        // Fetch projects and ratios
-        const ratios = await db.settlementRatios.where({ investorId: investor.id }).toArray();
-        const projectIds = ratios.map(r => r.projectId);
-        const projects = await db.projects.where('id').anyOf(projectIds).toArray();
-        const projectsById = projects.reduce((acc, p) => ({ ...acc, [p.id]: p }), {});
+            detailsModalBody.innerHTML = '';
+            if (ratios.length > 0) {
+                const list = document.createElement('ul');
+                list.className = 'list-disc space-y-2 pl-5';
+                ratios.forEach(ratio => {
+                    const project = projectsById[ratio.projectId];
+                    if (project) {
+                        const listItem = document.createElement('li');
+                        listItem.textContent = `مشروع: ${project.name} - نسبة: ${ratio.ratio * 100}%`;
+                        list.appendChild(listItem);
+                    }
+                });
+                detailsModalBody.appendChild(list);
+            } else {
+                detailsModalBody.textContent = 'لا توجد مشاريع مرتبطة بهذا المستثمر.';
+            }
 
-        detailsModalBody.innerHTML = ''; // Clear previous content
-        if (ratios.length > 0) {
-            const list = document.createElement('ul');
-            list.className = 'list-disc space-y-2 pl-5';
-            ratios.forEach(ratio => {
-                const project = projectsById[ratio.projectId];
-                if(project) {
-                    const listItem = document.createElement('li');
-                    listItem.textContent = `مشروع: ${project.name} - نسبة: ${ratio.ratio * 100}%`;
-                    list.appendChild(listItem);
+            detailsModal.classList.remove('hidden');
+        };
+
+        const closeDetailsModal = () => {
+            detailsModal.classList.add('hidden');
+        };
+
+        const openModal = (investor = null) => {
+            form.reset();
+            if (investor) {
+                modalTitle.textContent = 'تعديل مستثمر';
+                idInput.value = investor.id;
+                nameInput.value = investor.name;
+            } else {
+                modalTitle.textContent = 'إضافة مستثمر جديد';
+                idInput.value = '';
+            }
+            modal.classList.remove('hidden');
+        };
+
+        const closeModal = () => {
+            modal.classList.add('hidden');
+        };
+
+        const handleFormSubmit = async (event) => {
+            event.preventDefault();
+            const id = idInput.value ? Number(idInput.value) : null;
+            const investorData = { name: nameInput.value.trim() };
+
+            if (!investorData.name) {
+                alert('اسم المستثمر مطلوب.');
+                return;
+            }
+
+            try {
+                if (id) {
+                    await db.investors.put({ ...investorData, id });
+                    alert('تم تحديث المستثمر بنجاح.');
+                } else {
+                    await db.investors.add(investorData);
+                    alert('تمت إضافة المستثمر بنجاح.');
                 }
-            });
-            detailsModalBody.appendChild(list);
-        } else {
-            detailsModalBody.textContent = 'لا توجد مشاريع مرتبطة بهذا المستثمر.';
-        }
+                closeModal();
+                renderInvestors();
+            } catch (error) {
+                console.error('Failed to save investor:', error);
+                alert(error.name === 'ConstraintError' ? 'اسم المستثمر موجود بالفعل.' : 'حدث خطأ أثناء حفظ المستثمر.');
+            }
+        };
 
-        detailsModal.classList.remove('hidden');
-    };
+        const handleDelete = async (id) => {
+            if (!confirm('هل أنت متأكد أنك تريد حذف هذا المستثمر؟')) return;
+            try {
+                // Note: A real app should check for project links before deleting.
+                await db.investors.delete(id);
+                alert('تم حذف المستثمر.');
+                renderInvestors();
+            } catch (error) {
+                console.error('Failed to delete investor:', error);
+            }
+        };
 
-    const closeDetailsModal = () => {
-        detailsModal.classList.add('hidden');
-    };
+        // --- Event Listeners ---
+        addBtn.addEventListener('click', () => openModal());
+        cancelBtn.addEventListener('click', closeModal);
+        detailsCancelBtn.addEventListener('click', closeDetailsModal);
+        form.addEventListener('submit', handleFormSubmit);
 
-    const openModal = (investor = null) => {
-        form.reset();
-        if (investor) {
-            modalTitle.textContent = 'تعديل مستثمر';
-            idInput.value = investor.id;
-            nameInput.value = investor.name;
-        } else {
-            modalTitle.textContent = 'إضافة مستثمر جديد';
-            idInput.value = '';
-        }
-        modal.classList.remove('hidden');
-    };
+        tableBody.addEventListener('click', async (event) => {
+            const target = event.target;
+            const id = Number(target.dataset.id);
 
-    const closeModal = () => {
-        modal.classList.add('hidden');
+            if (target.classList.contains('edit-btn')) {
+                const investor = await db.investors.get(id);
+                if (investor) openModal(investor);
+            } else if (target.classList.contains('delete-btn')) {
+                handleDelete(id);
+            } else if (target.classList.contains('details-btn')) {
+                const investor = await db.investors.get(id);
+                if (investor) openDetailsModal(investor);
+            }
+        });
     };
 
     const renderInvestors = async () => {
         try {
+            const tableBody = document.getElementById('investors-table-body');
             const investors = await db.investors.toArray();
             tableBody.innerHTML = '';
             investors.forEach(inv => {
@@ -89,79 +150,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const handleFormSubmit = async (event) => {
-        event.preventDefault();
-        const id = idInput.value ? Number(idInput.value) : null;
-        const investorData = {
-            name: nameInput.value.trim(),
-        };
-
-        if (!investorData.name) {
-            alert('اسم المستثمر مطلوب.');
-            return;
-        }
-
-        try {
-            if (id) {
-                await db.investors.put({ ...investorData, id });
-                alert('تم تحديث المستثمر بنجاح.');
-            } else {
-                await db.investors.add(investorData);
-                alert('تمت إضافة المستثمر بنجاح.');
-            }
-            closeModal();
-            renderInvestors();
-        } catch (error) {
-            console.error('Failed to save investor:', error);
-            if (error.name === 'ConstraintError') {
-                alert('اسم المستثمر موجود بالفعل.');
-            } else {
-                alert('حدث خطأ أثناء حفظ المستثمر.');
-            }
-        }
-    };
-
-    const handleDelete = async (id) => {
-        // A real app should check for links to projects before deleting.
-        if (!confirm('هل أنت متأكد أنك تريد حذف هذا المستثمر؟')) {
-            return;
-        }
-        try {
-            await db.investors.delete(id);
-            alert('تم حذف المستثمر.');
-            renderInvestors();
-        } catch (error) {
-            console.error('Failed to delete investor:', error);
-        }
-    };
-
-    addBtn.addEventListener('click', () => openModal());
-    cancelBtn.addEventListener('click', closeModal);
-    form.addEventListener('submit', handleFormSubmit);
-
-    tableBody.addEventListener('click', async (event) => {
-        const target = event.target;
-        const id = Number(target.dataset.id);
-
-        if (target.classList.contains('edit-btn')) {
-            const investor = await db.investors.get(id);
-            if (investor) openModal(investor);
-        }
-
-        if (target.classList.contains('delete-btn')) {
-            handleDelete(id);
-        }
-
-        if (target.classList.contains('details-btn')) {
-            const investor = await db.investors.get(id);
-            if (investor) openDetailsModal(investor);
-        }
-    });
-
-    detailsCancelBtn.addEventListener('click', closeDetailsModal);
-
     document.addEventListener('show', (e) => {
         if (e.detail.pageId === 'page-investors') {
+            if (!isInitialized) {
+                init();
+            }
             renderInvestors();
         }
     });
