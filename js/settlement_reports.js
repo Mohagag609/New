@@ -181,6 +181,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (selectedSettlementId === 'latest') executeSettlementBtn.disabled = false;
             }
 
+            // Finally, apply the "Next-Day" settlement rule
+            const executionNotice = document.getElementById('settlement-execution-notice');
+            executionNotice.textContent = ''; // Clear previous notices
+            if (expenseVouchers.length > 0) {
+                const latestVoucherDate = expenseVouchers.reduce((max, v) => v.date > max ? v.date : max, expenseVouchers[0].date);
+                const todayStr = new Date().toISOString().split('T')[0];
+                if (todayStr <= latestVoucherDate) {
+                    executeSettlementBtn.disabled = true;
+                    executionNotice.textContent = `لا يمكن تنفيذ التسوية إلا في يوم تالٍ لآخر مصروف (${latestVoucherDate}).`;
+                }
+            }
+
+
             reportContent.classList.remove('hidden');
         } catch (error) {
             console.error('Failed to generate settlement reports:', error);
@@ -353,7 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const accountMap = new Map(accounts.map(a => [a.id, a.name]));
             const partyMap = new Map(parties.map(p => [p.id, p.name]));
 
-            // Determine date range based on selection, same logic as generateReports
+            // Determine date range based on selection
             const allProjectSettlements = await db.project_settlements.where({ projectId }).reverse().sortBy('settlementDate');
             const previousBalances = new Map();
             let startDate = new Date(0);
