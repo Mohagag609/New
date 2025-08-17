@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     let isInitialized = false;
 
-    const init = () => {
+    const initProjectsPage = () => {
         isInitialized = true;
 
         // --- DOM Elements ---
@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const idInput = document.getElementById('project-id');
         const nameInput = document.getElementById('project-name');
         const descriptionInput = document.getElementById('project-description');
+
+        // Investor Linking Modal Elements
         const projInvModal = document.getElementById('project-investors-modal');
         const projInvModalTitle = document.getElementById('proj-inv-modal-title');
         const linkInvestorForm = document.getElementById('link-investor-form');
@@ -23,24 +25,39 @@ document.addEventListener('DOMContentLoaded', () => {
         const closeProjInvBtn = document.getElementById('close-proj-inv-modal-btn');
         let currentManagingProjectId = null;
 
-        // --- Functions ---
+        // --- Core Functions ---
+        const renderProjects = async () => {
+            try {
+                const projects = await db.projects.toArray();
+                tableBody.innerHTML = '';
+                projects.forEach(p => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">${p.name}</td>
+                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">${p.description || ''}</td>
+                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm space-x-2 space-x-reverse">
+                            <button class="manage-investors-btn bg-teal-500 hover:bg-teal-700 text-white font-bold py-1 px-2 rounded" data-id="${p.id}">المستثمرون</button>
+                            <button class="edit-btn bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded" data-id="${p.id}">تعديل</button>
+                            <button class="delete-btn bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded" data-id="${p.id}">حذف</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Failed to render projects:', error);
+            }
+        };
+
         const openModal = (project = null) => {
             form.reset();
-            if (project) {
-                modalTitle.textContent = 'تعديل مشروع';
-                idInput.value = project.id;
-                nameInput.value = project.name;
-                descriptionInput.value = project.description || '';
-            } else {
-                modalTitle.textContent = 'إضافة مشروع جديد';
-                idInput.value = '';
-            }
+            modalTitle.textContent = project ? 'تعديل مشروع' : 'إضافة مشروع جديد';
+            idInput.value = project ? project.id : '';
+            nameInput.value = project ? project.name : '';
+            descriptionInput.value = project ? project.description || '' : '';
             modal.classList.remove('hidden');
         };
 
-        const closeModal = () => {
-            modal.classList.add('hidden');
-        };
+        const closeModal = () => modal.classList.add('hidden');
 
         const handleFormSubmit = async (event) => {
             event.preventDefault();
@@ -49,10 +66,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 name: nameInput.value.trim(),
                 description: descriptionInput.value.trim(),
             };
-            if (!projectData.name) {
-                alert('اسم المشروع مطلوب.');
-                return;
-            }
+            if (!projectData.name) return alert('اسم المشروع مطلوب.');
+
             try {
                 if (id) {
                     await db.projects.put({ ...projectData, id });
@@ -62,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert('تمت إضافة المشروع بنجاح.');
                 }
                 closeModal();
-                renderProjects();
+                await renderProjects();
             } catch (error) {
                 console.error('Failed to save project:', error);
                 alert(error.name === 'ConstraintError' ? 'اسم المشروع موجود بالفعل.' : 'حدث خطأ أثناء حفظ المشروع.');
@@ -73,12 +88,30 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!confirm('هل أنت متأكد أنك تريد حذف هذا المشروع؟ سيتم حذف جميع البيانات المرتبطة به.')) return;
             try {
                 await db.projects.delete(id);
-                // Note: Cascading delete for related data would be needed in a real app.
+                // Note: In a real app, you'd also delete related project_investors, etc.
                 alert('تم حذف المشروع.');
-                renderProjects();
+                await renderProjects();
             } catch (error) {
                 console.error('Failed to delete project:', error);
             }
+        };
+
+        // --- Investor Linking Functions ---
+        const renderLinkedInvestors = async (projectId) => {
+            const links = await db.project_investors.where({ projectId }).toArray();
+            const investorIds = links.map(l => l.investorId);
+            const investors = await db.investors.bulkGet(investorIds);
+            const investorMap = new Map(investors.map(i => [i.id, i.name]));
+            projInvList.innerHTML = '';
+            links.forEach(link => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-1';
+                li.innerHTML = `
+                    <span>${investorMap.get(link.investorId) || 'مستثمر غير معروف'} (الحصة: ${link.share || 'N/A'})</span>
+                    <button class="remove-investor-link-btn text-red-500 hover:text-red-700" data-link-id="${link.id}">إزالة</button>
+                `;
+                projInvList.appendChild(li);
+            });
         };
 
         const openManageInvestorsModal = async (projectId) => {
@@ -97,23 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             await renderLinkedInvestors(projectId);
             projInvModal.classList.remove('hidden');
-        };
-
-        const renderLinkedInvestors = async (projectId) => {
-            const links = await db.project_investors.where({ projectId }).toArray();
-            const investorIds = links.map(l => l.investorId);
-            const investors = await db.investors.bulkGet(investorIds);
-            const investorMap = new Map(investors.map(i => [i.id, i.name]));
-            projInvList.innerHTML = '';
-            links.forEach(link => {
-                const li = document.createElement('li');
-                li.className = 'flex justify-between items-center p-1';
-                li.innerHTML = `
-                    <span>${investorMap.get(link.investorId) || 'مستثمر غير معروف'} (الحصة: ${link.share || 'N/A'})</span>
-                    <button class="remove-investor-link-btn text-red-500 hover:text-red-700" data-link-id="${link.id}">إزالة</button>
-                `;
-                projInvList.appendChild(li);
-            });
         };
 
         const handleLinkInvestor = async (e) => {
@@ -160,7 +176,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         tableBody.addEventListener('click', async (event) => {
             const target = event.target;
+            if (!target.dataset.id) return;
             const id = Number(target.dataset.id);
+
             if (target.classList.contains('edit-btn')) {
                 const project = await db.projects.get(id);
                 if (project) openModal(project);
@@ -170,37 +188,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 openManageInvestorsModal(id);
             }
         });
-    };
 
-    const renderProjects = async () => {
-        try {
-            const tableBody = document.getElementById('projects-table-body');
-            const projects = await db.projects.toArray();
-            tableBody.innerHTML = '';
-            projects.forEach(p => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">${p.name}</td>
-                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">${p.description || ''}</td>
-                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm space-x-2 space-x-reverse">
-                        <button class="manage-investors-btn bg-teal-500 hover:bg-teal-700 text-white font-bold py-1 px-2 rounded" data-id="${p.id}">المستثمرون</button>
-                        <button class="edit-btn bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded" data-id="${p.id}">تعديل</button>
-                        <button class="delete-btn bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded" data-id="${p.id}">حذف</button>
-                    </td>
-                `;
-                tableBody.appendChild(row);
-            });
-        } catch (error) {
-            console.error('Failed to render projects:', error);
-        }
+        renderProjects();
     };
 
     document.addEventListener('show', (e) => {
-        if (e.detail.pageId === 'page-projects') {
-            if (!isInitialized) {
-                init();
-            }
-            renderProjects();
+        if (e.detail.pageId === 'page-projects' && !isInitialized) {
+            initProjectsPage();
         }
     });
 });

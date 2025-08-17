@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     let isInitialized = false;
 
-    const init = () => {
+    const initInvestorsPage = () => {
         isInitialized = true;
 
         // --- DOM Elements ---
@@ -18,10 +18,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const detailsModalBody = document.getElementById('investor-details-modal-body');
         const detailsCancelBtn = document.getElementById('cancel-investor-details-btn');
 
-        // --- Functions ---
+        // --- Core Functions ---
+        const renderInvestors = async () => {
+            try {
+                const investors = await db.investors.toArray();
+                tableBody.innerHTML = '';
+                investors.forEach(inv => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">${inv.name}</td>
+                        <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
+                            <button class="details-btn bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded" data-id="${inv.id}">التفاصيل</button>
+                            <button class="edit-btn bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded" data-id="${inv.id}">تعديل</button>
+                            <button class="delete-btn bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded" data-id="${inv.id}">حذف</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Failed to render investors:', error);
+            }
+        };
+
         const openDetailsModal = async (investor) => {
             detailsModalTitle.textContent = `تفاصيل مستثمر: ${investor.name}`;
-
             const ratios = await db.settlementRatios.where({ investorId: investor.id }).toArray();
             const projectIds = ratios.map(r => r.projectId);
             const projects = await db.projects.where('id').anyOf(projectIds).toArray();
@@ -43,40 +63,26 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 detailsModalBody.textContent = 'لا توجد مشاريع مرتبطة بهذا المستثمر.';
             }
-
             detailsModal.classList.remove('hidden');
         };
 
-        const closeDetailsModal = () => {
-            detailsModal.classList.add('hidden');
-        };
+        const closeDetailsModal = () => detailsModal.classList.add('hidden');
 
         const openModal = (investor = null) => {
             form.reset();
-            if (investor) {
-                modalTitle.textContent = 'تعديل مستثمر';
-                idInput.value = investor.id;
-                nameInput.value = investor.name;
-            } else {
-                modalTitle.textContent = 'إضافة مستثمر جديد';
-                idInput.value = '';
-            }
+            modalTitle.textContent = investor ? 'تعديل مستثمر' : 'إضافة مستثمر جديد';
+            idInput.value = investor ? investor.id : '';
+            nameInput.value = investor ? investor.name : '';
             modal.classList.remove('hidden');
         };
 
-        const closeModal = () => {
-            modal.classList.add('hidden');
-        };
+        const closeModal = () => modal.classList.add('hidden');
 
         const handleFormSubmit = async (event) => {
             event.preventDefault();
             const id = idInput.value ? Number(idInput.value) : null;
             const investorData = { name: nameInput.value.trim() };
-
-            if (!investorData.name) {
-                alert('اسم المستثمر مطلوب.');
-                return;
-            }
+            if (!investorData.name) return alert('اسم المستثمر مطلوب.');
 
             try {
                 if (id) {
@@ -87,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert('تمت إضافة المستثمر بنجاح.');
                 }
                 closeModal();
-                renderInvestors();
+                await renderInvestors();
             } catch (error) {
                 console.error('Failed to save investor:', error);
                 alert(error.name === 'ConstraintError' ? 'اسم المستثمر موجود بالفعل.' : 'حدث خطأ أثناء حفظ المستثمر.');
@@ -97,10 +103,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const handleDelete = async (id) => {
             if (!confirm('هل أنت متأكد أنك تريد حذف هذا المستثمر؟')) return;
             try {
-                // Note: A real app should check for project links before deleting.
                 await db.investors.delete(id);
                 alert('تم حذف المستثمر.');
-                renderInvestors();
+                await renderInvestors();
             } catch (error) {
                 console.error('Failed to delete investor:', error);
             }
@@ -114,6 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         tableBody.addEventListener('click', async (event) => {
             const target = event.target;
+            if (!target.dataset.id) return;
             const id = Number(target.dataset.id);
 
             if (target.classList.contains('edit-btn')) {
@@ -126,36 +132,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (investor) openDetailsModal(investor);
             }
         });
-    };
 
-    const renderInvestors = async () => {
-        try {
-            const tableBody = document.getElementById('investors-table-body');
-            const investors = await db.investors.toArray();
-            tableBody.innerHTML = '';
-            investors.forEach(inv => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">${inv.name}</td>
-                    <td class="px-5 py-5 border-b border-gray-200 bg-white text-sm">
-                        <button class="details-btn bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded" data-id="${inv.id}">التفاصيل</button>
-                        <button class="edit-btn bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded" data-id="${inv.id}">تعديل</button>
-                        <button class="delete-btn bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded" data-id="${inv.id}">حذف</button>
-                    </td>
-                `;
-                tableBody.appendChild(row);
-            });
-        } catch (error) {
-            console.error('Failed to render investors:', error);
-        }
+        renderInvestors();
     };
 
     document.addEventListener('show', (e) => {
-        if (e.detail.pageId === 'page-investors') {
-            if (!isInitialized) {
-                init();
-            }
-            renderInvestors();
+        if (e.detail.pageId === 'page-investors' && !isInitialized) {
+            initInvestorsPage();
         }
     });
 });
