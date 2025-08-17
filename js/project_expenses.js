@@ -54,28 +54,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderVouchers = async () => {
         try {
-            const vouchers = await db.settlement_vouchers.orderBy('id').reverse().toArray();
+            // Fetch vouchers that are project-related expenses paid by investors
+            const vouchers = await db.vouchers.where('paidByInvestorId').above(0).reverse().toArray();
+
             if (vouchers.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4">لا توجد سندات حالياً.</td></tr>`;
                 return;
             }
 
-            // Gather all unique IDs needed for lookups
             const projectIds = [...new Set(vouchers.map(v => v.projectId))];
             const investorIds = [...new Set(vouchers.map(v => v.paidByInvestorId))];
-            const categoryIds = [...new Set(vouchers.map(v => v.categoryId))];
+            const accountIds = [...new Set(vouchers.map(v => v.accountId))];
 
-            // Fetch all lookup data in one go
-            const [projects, investors, categories] = await Promise.all([
+            const [projects, investors, accounts] = await Promise.all([
                 db.projects.bulkGet(projectIds),
                 db.investors.bulkGet(investorIds),
-                db.accounts.bulkGet(categoryIds) // Use accounts table instead
+                db.accounts.bulkGet(accountIds)
             ]);
 
-            // Create maps for efficient lookup
             const projectMap = new Map(projects.filter(p => p).map(p => [p.id, p.name]));
             const investorMap = new Map(investors.filter(i => i).map(i => [i.id, i.name]));
-            const categoryMap = new Map(categories.filter(c => c).map(c => [c.id, c.name]));
+            const accountMap = new Map(accounts.filter(c => c).map(c => [c.id, c.name]));
 
             tableBody.innerHTML = '';
             vouchers.forEach(v => {
@@ -84,8 +83,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="px-5 py-3">${projectMap.get(v.projectId) || ''}</td>
                     <td class="px-5 py-3">${v.date}</td>
                     <td class="px-5 py-3">${investorMap.get(v.paidByInvestorId) || ''}</td>
-                    <td class="px-5 py-3">${categoryMap.get(v.categoryId) || ''}</td>
-                    <td class="px-5 py-3">${v.amount}</td>
+                    <td class="px-5 py-3">${accountMap.get(v.accountId) || ''}</td>
+                    <td class="px-5 py-3">${v.debit}</td>
                     <td class="px-5 py-3">
                         <button class="delete-btn text-red-500" data-id="${v.id}">حذف</button>
                     </td>
@@ -93,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 tableBody.appendChild(row);
             });
         } catch (error) {
-            console.error('Failed to render settlement vouchers:', error);
+            console.error('Failed to render project expenses:', error);
         }
     };
 
@@ -103,24 +102,27 @@ document.addEventListener('DOMContentLoaded', () => {
             projectId: Number(projectSelect.value),
             date: dateInput.value,
             paidByInvestorId: Number(investorSelect.value),
-            categoryId: Number(categorySelect.value),
-            amount: Number(amountInput.value),
-            notes: notesInput.value.trim(),
-            type: 'Payment', // As per spec, all entries here are expenses
+            accountId: Number(categorySelect.value),
+            debit: Number(amountInput.value),
+            credit: 0,
+            description: notesInput.value.trim(),
+            movementType: 'Payment', // All project expenses are payments from an investor's perspective
+            cashboxId: 0, // No cashbox involved in this type of transaction
         };
 
-        if (!voucherData.projectId || !voucherData.paidByInvestorId || !voucherData.categoryId || !voucherData.amount) {
+        if (!voucherData.projectId || !voucherData.paidByInvestorId || !voucherData.accountId || !voucherData.debit) {
             alert('الرجاء ملء جميع الحقول المطلوبة.');
             return;
         }
 
         try {
-            await db.settlement_vouchers.add(voucherData);
+            await db.vouchers.add(voucherData);
             alert('تم حفظ سند الصرف بنجاح.');
             closeModal();
             renderVouchers();
         } catch (error) {
-            console.error('Failed to save settlement voucher:', error);
+            console.error('Failed to save project expense voucher:', error);
+            alert('حدث خطأ أثناء حفظ السند.');
         }
     };
 

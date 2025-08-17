@@ -18,43 +18,57 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const generateReports = async () => {
         const projectId = Number(projectSelect.value);
-        settlementData = []; // Reset on each generation
+        settlementData = [];
         if (!projectId) {
             reportContent.classList.add('hidden');
             return;
         }
 
         try {
-            const [allVouchers, projectInvestors] = await Promise.all([
-                db.settlement_vouchers.where({ projectId }).toArray(),
-                db.project_investors.where({ projectId }).toArray()
-            ]);
+            // Find the last settlement for this project
+            const lastSettlement = await db.project_settlements
+                .where('projectId').equals(projectId)
+                .last();
 
-            // Filter out settlement transactions from financial calculations
-            const expenseVouchers = allVouchers.filter(v => v.type !== 'Settlement');
+            let lastSettlementDate = '1970-01-01';
+            let previousBalances = new Map();
 
-            const investorIdsFromVouchers = expenseVouchers.map(v => v.paidByInvestorId);
-            const investorIdsFromProject = projectInvestors.map(pi => pi.investorId);
-            const allUniqueInvestorIds = [...new Set([...investorIdsFromVouchers, ...investorIdsFromProject])];
-            const allInvestors = await db.investors.bulkGet(allUniqueInvestorIds);
-            const investorMap = new Map(allInvestors.filter(i => i).map(i => [i.id, i.name]));
+            if (lastSettlement) {
+                lastSettlementDate = lastSettlement.settlementDate;
+                lastSettlement.investorBalances.forEach(b => {
+                    previousBalances.set(b.investorId, b.balance);
+                });
+            }
 
-            const totalExpenses = expenseVouchers.reduce((sum, v) => sum + v.amount, 0);
-            totalExpensesSpan.textContent = formatCurrency(totalExpenses);
+            // Fetch vouchers created after the last settlement date
+            const expenseVouchers = await db.vouchers
+                .where('[projectId+date]').above([projectId, lastSettlementDate])
+                .toArray();
 
-            const paidByInvestor = new Map();
+            const projectInvestors = await db.project_investors.where({ projectId }).toArray();
+            const investorIds = [...new Set(projectInvestors.map(pi => pi.investorId))];
+            const investors = await db.investors.bulkGet(investorIds);
+            const investorMap = new Map(investors.filter(Boolean).map(i => [i.id, i.name]));
+
+            const totalPeriodExpenses = expenseVouchers.reduce((sum, v) => sum + (v.debit || 0), 0);
+            totalExpensesSpan.textContent = formatCurrency(totalPeriodExpenses);
+
+            const paidInPeriod = new Map();
             expenseVouchers.forEach(v => {
-                const currentPaid = paidByInvestor.get(v.paidByInvestorId) || 0;
-                paidByInvestor.set(v.paidByInvestorId, currentPaid + v.amount);
+                // Assuming expenses are paid by investors via vouchers
+                // This part needs clarification on how investor payments are recorded
+                // For now, let's assume a 'paidByInvestorId' field exists on the main voucher table
+                 if (v.paidByInvestorId) {
+                    paidInPeriod.set(v.paidByInvestorId, (paidInPeriod.get(v.paidByInvestorId) || 0) + v.debit);
+                }
             });
 
             investorExpensesTbody.innerHTML = '';
-            // Use allUniqueInvestorIds to ensure all investors in the project are listed, even if they paid nothing.
-            allUniqueInvestorIds.forEach(investorId => {
-                const totalPaid = paidByInvestor.get(investorId) || 0;
-                investorExpensesTbody.innerHTML += `
+            investorMap.forEach((name, id) => {
+                const totalPaid = (previousBalances.get(id) || 0) + (paidInPeriod.get(id) || 0);
+                 investorExpensesTbody.innerHTML += `
                     <tr>
-                        <td class="px-5 py-3">${investorMap.get(investorId) || 'غير معروف'}</td>
+                        <td class="px-5 py-3">${name}</td>
                         <td class="px-5 py-3">${formatCurrency(totalPaid)}</td>
                     </tr>
                 `;
@@ -65,14 +79,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             projectInvestors.forEach(pi => {
                 const settlementRatio = useEqualSplit && projectInvestors.length > 0 ? (1 / projectInvestors.length) : (pi.share || 0);
-                const paid = paidByInvestor.get(pi.investorId) || 0;
-                const fairShare = totalExpenses * settlementRatio;
-                const balance = paid - fairShare;
+                const totalPaid = (previousBalances.get(pi.investorId) || 0) + (paidInPeriod.get(pi.investorId) || 0);
+                const fairShare = totalPeriodExpenses * settlementRatio;
+                const balance = totalPaid - fairShare;
                 settlementData.push({
                     investorId: pi.investorId,
                     investorName: investorMap.get(pi.investorId),
                     settlementRatio: `${(settlementRatio * 100).toFixed(2)}%`,
-                    fairShare, paid, balance
+                    fairShare,
+                    paid: totalPaid,
+                    balance
                 });
             });
 
@@ -90,6 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
             });
 
+            // Settlement plan logic remains the same
             let creditors = settlementData.filter(d => d.balance > 0).map(d => ({...d})).sort((a,b) => b.balance - a.balance);
             let debtors = settlementData.filter(d => d.balance < 0).map(d => ({...d, balance: -d.balance})).sort((a,b) => b.balance - a.balance);
             const transactions = [];
@@ -116,6 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 executeSettlementBtn.disabled = false;
             }
 
+
             reportContent.classList.remove('hidden');
         } catch (error) {
             console.error('Failed to generate settlement reports:', error);
@@ -125,46 +143,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const executeSettlement = async () => {
         if (executeSettlementBtn.disabled || settlementData.length === 0) return;
 
-        const confirmation = confirm("هل أنت متأكد من تنفيذ التسوية؟ سيتم إنشاء سندات تسوية لهذه المعاملات ولا يمكن التراجع عنها.");
+        const confirmation = confirm("هل أنت متأكد من تنفيذ وحفظ هذه التسوية؟ سيتم أرشفة جميع الحركات الحالية وتصبح نقطة البداية للتسوية القادمة.");
         if (!confirmation) return;
 
         const projectId = Number(projectSelect.value);
         const today = new Date().toISOString().split('T')[0];
 
+        // We need the total expenses from the UI to store in the snapshot
+        const totalExpenses = settlementData.reduce((sum, d) => sum + d.fairShare, 0);
+
+        const settlementRecord = {
+            projectId: projectId,
+            settlementDate: today,
+            totalExpensesSettled: totalExpenses,
+            investorBalances: settlementData.map(d => ({
+                investorId: d.investorId,
+                investorName: d.investorName,
+                balance: d.paid // The amount they have contributed so far
+            }))
+        };
+
         try {
-            let creditors = settlementData.filter(d => d.balance > 0).map(d => ({...d})).sort((a,b) => b.balance - a.balance);
-            let debtors = settlementData.filter(d => d.balance < 0).map(d => ({...d, balance: -d.balance})).sort((a,b) => b.balance - a.balance);
-            const newVouchers = [];
-
-            while (creditors.length > 0 && debtors.length > 0) {
-                const creditor = creditors[0];
-                const debtor = debtors[0];
-                const amount = Math.min(creditor.balance, debtor.balance);
-
-                newVouchers.push({
-                    projectId,
-                    date: today,
-                    type: 'Settlement',
-                    amount: amount,
-                    paidByInvestorId: debtor.investorId,
-                    receivedByInvestorId: creditor.investorId,
-                    notes: `تسوية مستثمر من ${debtor.investorName} إلى ${creditor.investorName}`
-                });
-
-                creditor.balance -= amount;
-                debtor.balance -= amount;
-                if (creditor.balance < 0.01) creditors.shift();
-                if (debtor.balance < 0.01) debtors.shift();
-            }
-
-            await db.settlement_vouchers.bulkAdd(newVouchers);
-            alert('تم تنفيذ التسوية بنجاح!');
-            generateReports(); // Refresh the report view
-            alert('تم تحديث التقرير. يجب أن تكون الأرصدة الآن صفراً وزر التنفيذ معطلاً.');
-
+            await db.project_settlements.add(settlementRecord);
+            alert('تم حفظ التسوية بنجاح!');
+            await generateReports(); // Refresh the report view
+            alert('تم تحديث التقرير. المصروفات تمت تصفيتها، والأرصدة الجديدة تمثل نقطة البداية القادمة.');
         } catch (error) {
-            console.error('Failed to execute settlement:', error);
-            alert('حدث خطأ أثناء تنفيذ التسوية.');
+            console.error('Failed to save settlement snapshot:', error);
+            alert('حدث خطأ أثناء حفظ التسوية.');
         }
     };
 
