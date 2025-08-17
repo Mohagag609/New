@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (endDate) {
                 query = query.and(v => v.date <= endDate.toISOString().split('T')[0]);
             }
-            const paymentVouchers = await query.and(v => v.projectId === projectId && v.movementType === 'Payment' && v.paidByInvestorId).toArray();
+            const paymentVouchers = await query.and(v => v.projectId === projectId && v.movementType === 'Payment').toArray();
 
             // 5. Normalize and calculate period expenses
             const expenseVouchers = paymentVouchers.map(v => ({
@@ -217,9 +217,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 balances: Array.from(newCumulativeContributions.entries()).map(([investorId, balance]) => ({ investorId, balance }))
             };
 
-            // Use a transaction to save both vouchers and the settlement record
-            await db.transaction('rw', db.settlement_vouchers, db.project_settlements, async () => {
-                await db.settlement_vouchers.bulkAdd(newVouchers);
+            // Use a transaction to save the settlement record
+            await db.transaction('rw', db.project_settlements, async () => {
                 await db.project_settlements.add(newSettlementRecord);
             });
 
@@ -357,7 +356,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (endDate) {
                 query = query.and(v => v.date <= endDate.toISOString().split('T')[0]);
             }
-            const paymentVouchers = await query.and(v => v.projectId === projectId && v.movementType === 'Payment' && v.paidByInvestorId).toArray();
+            const paymentVouchers = await query.and(v => v.projectId === projectId && v.movementType === 'Payment').toArray();
 
             let reportHtml = `<h1 class="text-2xl font-bold text-center mb-4">تقرير المصروفات التفصيلي لمشروع: ${projectName}</h1>`;
             if(endDate) reportHtml += `<h2 class="text-lg text-center mb-4">للفترة من ${startDate.toISOString().split('T')[0]} إلى ${endDate.toISOString().split('T')[0]}</h2>`;
