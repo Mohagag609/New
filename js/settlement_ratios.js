@@ -66,8 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
                        class="ratio-input mt-1 block w-1/3 border-gray-300 rounded-md"
                        data-link-id="${link.id}"
                        value="${(link.share || 0) * 100}">
-                <span class="w-1/4">%</span>
-                <button class="delete-ratio-btn text-red-500 hover:text-red-700 w-1/4 text-left" data-link-id="${link.id}">حذف</button>
+                <span class="w-1/3">%</span>
             `;
             ratiosList.appendChild(div);
         });
@@ -83,32 +82,20 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        const inputs = ratiosList.querySelectorAll('input.ratio-input');
+        const updates = Array.from(inputs).map(input => {
+            return {
+                key: Number(input.dataset.linkId),
+                changes: { share: (Number(input.value) || 0) / 100 }
+            };
+        });
+
         try {
-            const inputs = ratiosList.querySelectorAll('input.ratio-input');
-            if (inputs.length === 0) {
-                alert('لا توجد نسب لتحديثها.');
-                return;
-            }
-
-            const linksToUpdate = [];
-            for (const input of inputs) {
-                const linkId = Number(input.dataset.linkId);
-                const newShare = (Number(input.value) || 0) / 100;
-
-                // Fetch the existing record to update it
-                const link = await db.project_investors.get(linkId);
-                if (link) {
-                    link.share = newShare;
-                    linksToUpdate.push(link);
-                }
-            }
-
-            await db.project_investors.bulkPut(linksToUpdate);
+            await db.project_investors.bulkUpdate(updates);
             alert('تم حفظ النسب بنجاح!');
-
         } catch (error) {
             console.error('Failed to save ratios:', error);
-            alert(`حدث خطأ أثناء حفظ النسب: ${error.stack}`);
+            alert('حدث خطأ أثناء حفظ النسب.');
         }
     };
 
@@ -158,22 +145,6 @@ document.addEventListener('DOMContentLoaded', () => {
     addInvestorForm.addEventListener('submit', handleAddInvestorToProject);
     saveBtn.addEventListener('click', handleSaveRatios);
     ratiosList.addEventListener('input', updateTotal);
-
-    ratiosList.addEventListener('click', async (e) => {
-        if (e.target.classList.contains('delete-ratio-btn')) {
-            const linkId = Number(e.target.dataset.linkId);
-            if (confirm('هل أنت متأكد من حذف هذا المستثمر من المشروع؟')) {
-                try {
-                    await db.project_investors.delete(linkId);
-                    // Refresh the view
-                    await handleProjectSelect();
-                } catch (error) {
-                    console.error('Failed to delete project investor link:', error);
-                    alert('فشل حذف المستثمر من المشروع.');
-                }
-            }
-        }
-    });
 
     document.addEventListener('show', (e) => {
         if (e.detail.pageId === 'page-settlement-ratios') {

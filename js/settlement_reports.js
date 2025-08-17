@@ -18,8 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const generateReports = async () => {
         const projectId = Number(projectSelect.value);
-        const selectedSettlementId = historicalSettlementSelect.value;
-
         settlementData = []; // Reset on each generation
         if (!projectId) {
             reportContent.classList.add('hidden');
@@ -27,131 +25,67 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // 1. Get project investors and their names
-            const projectInvestors = await db.project_investors.where({ projectId }).toArray();
-            const investorIds = projectInvestors.map(pi => pi.investorId);
-            const investors = await db.investors.bulkGet(investorIds);
-            const investorMap = new Map(investors.filter(i => i).map(i => [i.id, i.name]));
+            const [allVouchers, projectInvestors] = await Promise.all([
+                db.settlement_vouchers.where({ projectId }).toArray(),
+                db.project_investors.where({ projectId }).toArray()
+            ]);
 
-            // 2. Determine the date range and previous balances based on selection
-            const allProjectSettlements = await db.project_settlements.where({ projectId }).reverse().sortBy('settlementDate');
-            const previousContributions = new Map();
-            let startDate = new Date(0);
-            let endDate = null; // null means open-ended (for latest)
+            // Filter out settlement transactions from financial calculations
+            const expenseVouchers = allVouchers.filter(v => v.type !== 'Settlement');
 
-            if (selectedSettlementId === 'latest') {
-                const lastSettlement = allProjectSettlements[0];
-                if (lastSettlement) {
-                    const lastSettlementDate = new Date(lastSettlement.settlementDate);
-                    lastSettlementDate.setUTCDate(lastSettlementDate.getUTCDate() + 1); // Start from the day after
-                    startDate = lastSettlementDate;
-                    lastSettlement.balances.forEach(item => previousContributions.set(item.investorId, item.balance));
-                }
-                executeSettlementBtn.style.display = 'block'; // Show execute button for latest
-            } else {
-                const settlementId = Number(selectedSettlementId);
-                const selectedIndex = allProjectSettlements.findIndex(s => s.id === settlementId);
+            const investorIdsFromVouchers = expenseVouchers.map(v => v.paidByInvestorId);
+            const investorIdsFromProject = projectInvestors.map(pi => pi.investorId);
+            const allUniqueInvestorIds = [...new Set([...investorIdsFromVouchers, ...investorIdsFromProject])];
+            const allInvestors = await db.investors.bulkGet(allUniqueInvestorIds);
+            const investorMap = new Map(allInvestors.filter(i => i).map(i => [i.id, i.name]));
 
-                if (selectedIndex !== -1) {
-                    const selectedSettlement = allProjectSettlements[selectedIndex];
-                    endDate = new Date(selectedSettlement.settlementDate);
+            const totalExpenses = expenseVouchers.reduce((sum, v) => sum + v.amount, 0);
+            totalExpensesSpan.textContent = formatCurrency(totalExpenses);
 
-                    const previousSettlement = allProjectSettlements[selectedIndex + 1]; // The next one in reverse sorted array
-                    if (previousSettlement) {
-                        const prevSettlementDate = new Date(previousSettlement.settlementDate);
-                        prevSettlementDate.setUTCDate(prevSettlementDate.getUTCDate() + 1);
-                        startDate = prevSettlementDate;
-                        previousSettlement.balances.forEach(item => previousContributions.set(item.investorId, item.balance));
-                    }
-                }
-                executeSettlementBtn.style.display = 'none'; // Hide execute button for historical
-            }
-
-            // 3. Display the "Previous Contribution" section
-            const previousSettlementSummaryDiv = document.getElementById('previous-settlement-summary');
-            if (previousContributions.size > 0) {
-                let summaryHtml = `<p class="mb-2"><strong>إجمالي المساهمات حتى تاريخ ${startDate.toISOString().split('T')[0]}:</strong></p><ul class="list-disc pr-5">`;
-                investorIds.forEach(id => {
-                    const balance = previousContributions.get(id) || 0;
-                    summaryHtml += `<li>${investorMap.get(id) || 'غير معروف'}: <span class="font-bold">${formatCurrency(balance)}</span></li>`;
-                });
-                summaryHtml += '</ul>';
-                previousSettlementSummaryDiv.innerHTML = summaryHtml;
-            } else {
-                previousSettlementSummaryDiv.innerHTML = '<p class="text-gray-500">لا توجد مساهمات سابقة. هذه هي الفترة الأولى.</p>';
-            }
-
-            // 4. Fetch vouchers for the determined period
-            let query = db.vouchers.where('date').aboveOrEqual(startDate.toISOString().split('T')[0]);
-            if (endDate) {
-                query = query.and(v => v.date <= endDate.toISOString().split('T')[0]);
-            }
-            const paymentVouchers = await query.and(v => v.projectId === projectId && v.movementType === 'Payment').toArray();
-
-            // 5. Normalize and calculate period expenses
-            const expenseVouchers = paymentVouchers.map(v => ({
-                date: v.date,
-                amount: v.credit,
-                paidByInvestorId: v.paidByInvestorId,
-                description: v.description,
-            }));
-            const totalPeriodExpenses = expenseVouchers.reduce((sum, v) => sum + v.amount, 0);
-            document.getElementById('settlement-total-expenses').textContent = formatCurrency(totalPeriodExpenses);
-
-            // 6. Populate the Period Expenses table
-            const periodExpensesBody = document.getElementById('period-expenses-body');
-            periodExpensesBody.innerHTML = '';
-            if (expenseVouchers.length === 0) {
-                periodExpensesBody.innerHTML = `<tr><td colspan="4" class="text-center p-4">لا توجد مصروفات في هذه الفترة.</td></tr>`;
-            } else {
-                expenseVouchers.forEach(v => {
-                    periodExpensesBody.innerHTML += `
-                        <tr>
-                            <td class="px-5 py-3 border-b">${v.date}</td>
-                            <td class="px-5 py-3 border-b">${v.description}</td>
-                            <td class="px-5 py-3 border-b">${investorMap.get(v.paidByInvestorId) || 'صندوق المشروع'}</td>
-                            <td class="px-5 py-3 border-b">${formatCurrency(v.amount)}</td>
-                        </tr>
-                    `;
-                });
-            }
-
-            // 7. Calculate period contribution and final balances
-            const periodContribution = new Map();
+            const paidByInvestor = new Map();
             expenseVouchers.forEach(v => {
-                if (v.paidByInvestorId) {
-                    const currentPaid = periodContribution.get(v.paidByInvestorId) || 0;
-                    periodContribution.set(v.paidByInvestorId, currentPaid + v.amount);
-                }
+                const currentPaid = paidByInvestor.get(v.paidByInvestorId) || 0;
+                paidByInvestor.set(v.paidByInvestorId, currentPaid + v.amount);
+            });
+
+            investorExpensesTbody.innerHTML = '';
+            // Use allUniqueInvestorIds to ensure all investors in the project are listed, even if they paid nothing.
+            allUniqueInvestorIds.forEach(investorId => {
+                const totalPaid = paidByInvestor.get(investorId) || 0;
+                investorExpensesTbody.innerHTML += `
+                    <tr>
+                        <td class="px-5 py-3">${investorMap.get(investorId) || 'غير معروف'}</td>
+                        <td class="px-5 py-3">${formatCurrency(totalPaid)}</td>
+                    </tr>
+                `;
             });
 
             const totalShares = projectInvestors.reduce((sum, pi) => sum + (pi.share || 0), 0);
             const useEqualSplit = (totalShares < 0.99 || totalShares > 1.01);
+
             projectInvestors.forEach(pi => {
                 const settlementRatio = useEqualSplit && projectInvestors.length > 0 ? (1 / projectInvestors.length) : (pi.share || 0);
-                const currentPaid = periodContribution.get(pi.investorId) || 0;
-                const fairShare = totalPeriodExpenses * settlementRatio;
-                const balanceForThisPeriod = currentPaid - fairShare;
-
+                const paid = paidByInvestor.get(pi.investorId) || 0;
+                const fairShare = totalExpenses * settlementRatio;
+                const balance = paid - fairShare;
                 settlementData.push({
                     investorId: pi.investorId,
                     investorName: investorMap.get(pi.investorId),
-                    fairShare,
-                    paid: currentPaid,
-                    balance: balanceForThisPeriod
+                    settlementRatio: `${(settlementRatio * 100).toFixed(2)}%`,
+                    fairShare, paid, balance
                 });
             });
 
-            // 8. Populate the final settlement calculation table
             finalSettlementTbody.innerHTML = '';
             settlementData.forEach(data => {
                 const balanceClass = data.balance >= 0 ? 'text-green-600' : 'text-red-600';
                 finalSettlementTbody.innerHTML += `
                     <tr>
-                        <td class="px-5 py-3 border-b">${data.investorName}</td>
-                        <td class="px-5 py-3 border-b">${formatCurrency(data.paid)}</td>
-                        <td class="px-5 py-3 border-b">${formatCurrency(data.fairShare)}</td>
-                        <td class="px-5 py-3 border-b font-bold ${balanceClass}">${formatCurrency(data.balance)}</td>
+                        <td class="px-5 py-3">${data.investorName}</td>
+                        <td class="px-5 py-3">${data.settlementRatio}</td>
+                        <td class="px-5 py-3">${formatCurrency(data.fairShare)}</td>
+                        <td class="px-5 py-3">${formatCurrency(data.paid)}</td>
+                        <td class="px-5 py-3 font-bold ${balanceClass}">${formatCurrency(data.balance)}</td>
                     </tr>
                 `;
             });
@@ -159,6 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let creditors = settlementData.filter(d => d.balance > 0).map(d => ({...d})).sort((a,b) => b.balance - a.balance);
             let debtors = settlementData.filter(d => d.balance < 0).map(d => ({...d, balance: -d.balance})).sort((a,b) => b.balance - a.balance);
             const transactions = [];
+
             while (creditors.length > 0 && debtors.length > 0) {
                 const creditor = creditors[0];
                 const debtor = debtors[0];
@@ -173,26 +108,13 @@ document.addEventListener('DOMContentLoaded', () => {
             settlementPlanList.innerHTML = '';
             if (transactions.length === 0) {
                 settlementPlanList.innerHTML = '<li>لا توجد تسويات مطلوبة.</li>';
-                if (selectedSettlementId === 'latest') executeSettlementBtn.disabled = true;
+                executeSettlementBtn.disabled = true;
             } else {
                 transactions.forEach(t => {
                     settlementPlanList.innerHTML += `<li>${t.from.investorName} يدفع ${formatCurrency(t.amount)} إلى ${t.to.investorName}</li>`;
                 });
-                if (selectedSettlementId === 'latest') executeSettlementBtn.disabled = false;
+                executeSettlementBtn.disabled = false;
             }
-
-            // Finally, apply the "Next-Day" settlement rule
-            const executionNotice = document.getElementById('settlement-execution-notice');
-            executionNotice.textContent = ''; // Clear previous notices
-            if (expenseVouchers.length > 0) {
-                const latestVoucherDate = expenseVouchers.reduce((max, v) => v.date > max ? v.date : max, expenseVouchers[0].date);
-                const todayStr = new Date().toISOString().split('T')[0];
-                if (todayStr <= latestVoucherDate) {
-                    executeSettlementBtn.disabled = true;
-                    executionNotice.textContent = `لا يمكن تنفيذ التسوية إلا في يوم تالٍ لآخر مصروف (${latestVoucherDate}).`;
-                }
-            }
-
 
             reportContent.classList.remove('hidden');
         } catch (error) {
@@ -210,24 +132,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const today = new Date().toISOString().split('T')[0];
 
         try {
-            // Fetch the last settlement to get previous cumulative contributions
-            const lastSettlement = await db.project_settlements.where({ projectId }).reverse().sortBy('settlementDate');
-            const lastSettlementRecord = lastSettlement[0];
-            const previousContributions = new Map();
-            if (lastSettlementRecord) {
-                lastSettlementRecord.balances.forEach(item => {
-                    previousContributions.set(item.investorId, item.balance);
-                });
-            }
-
-            // Generate settlement vouchers (this logic is unchanged)
             let creditors = settlementData.filter(d => d.balance > 0).map(d => ({...d})).sort((a,b) => b.balance - a.balance);
             let debtors = settlementData.filter(d => d.balance < 0).map(d => ({...d, balance: -d.balance})).sort((a,b) => b.balance - a.balance);
             const newVouchers = [];
+
             while (creditors.length > 0 && debtors.length > 0) {
                 const creditor = creditors[0];
                 const debtor = debtors[0];
                 const amount = Math.min(creditor.balance, debtor.balance);
+
                 newVouchers.push({
                     projectId,
                     date: today,
@@ -237,74 +150,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     receivedByInvestorId: creditor.investorId,
                     notes: `تسوية مستثمر من ${debtor.investorName} إلى ${creditor.investorName}`
                 });
+
                 creditor.balance -= amount;
                 debtor.balance -= amount;
                 if (creditor.balance < 0.01) creditors.shift();
                 if (debtor.balance < 0.01) debtors.shift();
             }
 
-            // Calculate the NEW cumulative contributions to save in the snapshot
-            const newCumulativeContributions = new Map();
-            settlementData.forEach(d => {
-                const prevContribution = previousContributions.get(d.investorId) || 0;
-                const periodFairShare = d.fairShare; // Use the period's fair share for the new contribution
-                newCumulativeContributions.set(d.investorId, prevContribution + periodFairShare);
-            });
-
-            const newSettlementRecord = {
-                projectId,
-                settlementDate: today,
-                // Save the new cumulative contributions as the 'balance' for the next period
-                balances: Array.from(newCumulativeContributions.entries()).map(([investorId, balance]) => ({ investorId, balance }))
-            };
-
-            // Use a transaction to save the settlement record
-            await db.transaction('rw', db.project_settlements, async () => {
-                await db.project_settlements.add(newSettlementRecord);
-            });
-
-            alert('تمت التسوية بنجاح.');
-
-            // Manually update UI to prevent re-execution without a full refresh
-            executeSettlementBtn.disabled = true;
-            settlementPlanList.innerHTML = '<li class="text-green-600 font-bold">تم تنفيذ هذه التسوية بنجاح. يرجى تحديث الصفحة لبدء تسوية جديدة.</li>';
+            await db.settlement_vouchers.bulkAdd(newVouchers);
+            alert('تم تنفيذ التسوية بنجاح!');
+            generateReports(); // Refresh the report view
+            alert('تم تحديث التقرير. يجب أن تكون الأرصدة الآن صفراً وزر التنفيذ معطلاً.');
 
         } catch (error) {
             console.error('Failed to execute settlement:', error);
             alert('حدث خطأ أثناء تنفيذ التسوية.');
-        }
-    };
-
-    const historicalSettlementSelect = document.getElementById('historical-settlement-select');
-
-    const populateSettlementHistoryDropdown = async (projectId) => {
-        historicalSettlementSelect.innerHTML = ''; // Clear previous options
-        if (!projectId) {
-            historicalSettlementSelect.disabled = true;
-            return;
-        }
-
-        try {
-            const settlements = await db.project_settlements.where({ projectId }).reverse().sortBy('settlementDate');
-            historicalSettlementSelect.disabled = false;
-
-            // Add option for the latest/current settlement
-            const latestOption = document.createElement('option');
-            latestOption.value = 'latest';
-            latestOption.textContent = 'تسوية جديدة / أحدث تسوية';
-            historicalSettlementSelect.appendChild(latestOption);
-
-            if (settlements.length > 0) {
-                settlements.forEach(s => {
-                    const option = document.createElement('option');
-                    option.value = s.id;
-                    option.textContent = `تسوية تاريخ: ${s.settlementDate}`;
-                    historicalSettlementSelect.appendChild(option);
-                });
-            }
-        } catch (error) {
-            console.error("Failed to populate settlement history:", error);
-            historicalSettlementSelect.disabled = true;
         }
     };
 
@@ -317,16 +177,9 @@ document.addEventListener('DOMContentLoaded', () => {
             option.textContent = p.name;
             projectSelect.appendChild(option);
         });
-        await populateSettlementHistoryDropdown(null); // Initially disable
     };
 
-    projectSelect.addEventListener('change', async () => {
-        const projectId = Number(projectSelect.value);
-        await populateSettlementHistoryDropdown(projectId);
-        await generateReports(); // Trigger report generation
-    });
-
-    historicalSettlementSelect.addEventListener('change', generateReports);
+    projectSelect.addEventListener('change', generateReports);
     executeSettlementBtn.addEventListener('click', executeSettlement);
 
     finalSettlementPrintBtn.addEventListener('click', () => {
@@ -341,132 +194,84 @@ document.addEventListener('DOMContentLoaded', () => {
     const generateAndPrintDetailedReport = async () => {
         const projectId = Number(projectSelect.value);
         const projectName = projectSelect.options[projectSelect.selectedIndex].text;
-        const selectedSettlementId = historicalSettlementSelect.value;
-
         if (!projectId) {
             alert("الرجاء اختيار مشروع أولاً.");
             return;
         }
 
         try {
-            const [projectInvestors, allInvestors, accounts, parties] = await Promise.all([
-                db.project_investors.where({ projectId }).toArray(),
-                db.investors.toArray(),
+            const [vouchers, accounts, parties, projectInvestors] = await Promise.all([
+                db.settlement_vouchers.where({ projectId }).toArray(),
                 db.accounts.toArray(),
-                db.parties.toArray()
+                db.parties.toArray(),
+                db.project_investors.where({ projectId }).toArray()
             ]);
 
-            const investorIds = projectInvestors.map(pi => pi.investorId);
+            const investorIds = [...new Set(projectInvestors.map(pi => pi.investorId))];
             if (investorIds.length === 0) {
                 alert("لا يوجد مستثمرون مرتبطون بهذا المشروع.");
                 return;
             }
+            const investors = await db.investors.bulkGet(investorIds);
 
-            const investorMap = new Map(allInvestors.map(i => [i.id, i.name]));
+            const investorMap = new Map(investors.map(i => [i.id, i.name]));
             const accountMap = new Map(accounts.map(a => [a.id, a.name]));
             const partyMap = new Map(parties.map(p => [p.id, p.name]));
 
-            // Determine date range based on selection
-            const allProjectSettlements = await db.project_settlements.where({ projectId }).reverse().sortBy('settlementDate');
-            const previousBalances = new Map();
-            let startDate = new Date(0);
-            let endDate = null;
-
-            if (selectedSettlementId === 'latest') {
-                const lastSettlement = allProjectSettlements[0];
-                if (lastSettlement) {
-                    const lastSettlementDate = new Date(lastSettlement.settlementDate);
-                    lastSettlementDate.setUTCDate(lastSettlementDate.getUTCDate() + 1);
-                    startDate = lastSettlementDate;
-                    lastSettlement.balances.forEach(item => previousBalances.set(item.investorId, item.balance));
+            const vouchersByInvestor = new Map();
+            investors.forEach(inv => vouchersByInvestor.set(inv.id, []));
+            vouchers.filter(v => v.type !== 'Settlement').forEach(v => {
+                if (vouchersByInvestor.has(v.paidByInvestorId)) {
+                    vouchersByInvestor.get(v.paidByInvestorId).push(v);
                 }
-            } else {
-                const settlementId = Number(selectedSettlementId);
-                const selectedIndex = allProjectSettlements.findIndex(s => s.id === settlementId);
-                if (selectedIndex !== -1) {
-                    const selectedSettlement = allProjectSettlements[selectedIndex];
-                    endDate = new Date(selectedSettlement.settlementDate);
-                    const previousSettlement = allProjectSettlements[selectedIndex + 1];
-                    if (previousSettlement) {
-                        const prevSettlementDate = new Date(previousSettlement.settlementDate);
-                        prevSettlementDate.setUTCDate(prevSettlementDate.getUTCDate() + 1);
-                        startDate = prevSettlementDate;
-                        previousSettlement.balances.forEach(item => previousBalances.set(item.investorId, item.balance));
-                    }
-                }
-            }
-
-            // Fetch vouchers for the determined period
-            let query = db.vouchers.where('date').aboveOrEqual(startDate.toISOString().split('T')[0]);
-            if (endDate) {
-                query = query.and(v => v.date <= endDate.toISOString().split('T')[0]);
-            }
-            const paymentVouchers = await query.and(v => v.projectId === projectId && v.movementType === 'Payment').toArray();
+            });
 
             let reportHtml = `<h1 class="text-2xl font-bold text-center mb-4">تقرير المصروفات التفصيلي لمشروع: ${projectName}</h1>`;
-            if(endDate) reportHtml += `<h2 class="text-lg text-center mb-4">للفترة من ${startDate.toISOString().split('T')[0]} إلى ${endDate.toISOString().split('T')[0]}</h2>`;
-            else reportHtml += `<h2 class="text-lg text-center mb-4">للفترة بعد تاريخ ${startDate.toISOString().split('T')[0]}</h2>`;
 
-
-            for (const investorId of investorIds) {
+            for (const [investorId, investorVouchers] of vouchersByInvestor.entries()) {
                 const investorName = investorMap.get(investorId);
                 reportHtml += `<div class="mb-8" style="page-break-after: always;">`;
                 reportHtml += `<h2 class="text-xl font-bold border-b-2 border-gray-300 pb-2 mb-4">المستثمر: ${investorName}</h2>`;
 
-                const relatedVouchers = paymentVouchers
-                    .filter(v => v.paidByInvestorId === investorId)
-                    .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-                const prevBalance = previousBalances.get(investorId) || 0;
-
-                reportHtml += `<table class="min-w-full leading-normal" style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr>
-                            <th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">التاريخ</th>
-                            <th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">الحساب</th>
-                            <th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">الطرف (المورد)</th>
-                            <th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">البيان</th>
-                            <th class="px-5 py-3 border-b-2 bg-gray-100 text-right text-xs font-semibold uppercase">المبلغ</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr class="bg-gray-50 font-bold">
-                            <td colspan="4" class="px-5 py-2 border-b text-right">رصيد المساهمة السابق</td>
-                            <td class="px-5 py-2 border-b text-left">${formatCurrency(prevBalance)}</td>
-                        </tr>`;
-
-                let totalPaid = 0;
-                if (relatedVouchers.length === 0) {
-                    reportHtml += `<tr><td colspan="5" class="text-center p-4">لا توجد مصروفات جديدة في هذه الفترة.</td></tr>`;
+                if (investorVouchers.length === 0) {
+                    reportHtml += `<p>لا توجد مصروفات مسجلة لهذا المستثمر.</p>`;
                 } else {
-                    relatedVouchers.forEach(v => {
-                        const accountName = accountMap.get(v.accountId) || 'غير معروف';
-                        const partyName = v.partyId ? partyMap.get(v.partyId) || '' : '';
-                        const notes = v.description || '';
-                        const paidAmount = v.credit;
-                        totalPaid += paidAmount;
+                    reportHtml += `<table class="min-w-full leading-normal" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">التاريخ</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">الحساب</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">المورد</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">البيان</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-right text-xs font-semibold uppercase">المبلغ</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+                    let total = 0;
+                    investorVouchers.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(v => {
+                        const accountName = accountMap.get(v.categoryId) || 'غير معروف';
+                        const partyName = v.partyId ? partyMap.get(v.partyId) || 'غير معروف' : '';
+
                         reportHtml += `<tr>
                             <td class="px-5 py-2 border-b">${v.date}</td>
                             <td class="px-5 py-2 border-b">${accountName}</td>
                             <td class="px-5 py-2 border-b">${partyName}</td>
-                            <td class="px-5 py-2 border-b">${notes}</td>
-                            <td class="px-5 py-2 border-b text-left">${formatCurrency(paidAmount)}</td>
+                            <td class="px-5 py-2 border-b">${v.notes || ''}</td>
+                            <td class="px-5 py-2 border-b text-left">${formatCurrency(v.amount)}</td>
                         </tr>`;
+                        total += v.amount;
                     });
-                }
 
-                reportHtml += `</tbody>
-                    <tfoot>
-                        <tr class="font-bold">
-                            <td colspan="4" class="px-5 py-2 border-t-2 text-right">إجمالي مصروفات الفترة</td>
-                            <td class="px-5 py-2 border-t-2 text-left">${formatCurrency(totalPaid)}</td>
-                        </tr>
-                        <tr class="font-bold text-lg bg-gray-100">
-                            <td colspan="4" class="px-5 py-2 border-t-2 text-right">إجمالي المساهمة النهائي</td>
-                            <td class="px-5 py-2 border-t-2 text-left">${formatCurrency(prevBalance + totalPaid)}</td>
-                        </tr>
-                    </tfoot>
-                </table>`;
+                    reportHtml += `</tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="4" class="px-5 py-2 border-t-2 font-bold text-right">الإجمالي</td>
+                                <td class="px-5 py-2 border-t-2 font-bold text-left">${formatCurrency(total)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>`;
+                }
                 reportHtml += `</div>`;
             }
 

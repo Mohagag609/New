@@ -54,47 +54,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderVouchers = async () => {
         try {
-            const currentProjectId = Number(localStorage.getItem('currentProjectId'));
-            if (!currentProjectId) {
-                tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4">الرجاء اختيار مشروع من القائمة الرئيسية أولاً.</td></tr>`;
-                return;
-            }
-
-            // This page now shows Payment Vouchers for the current project that have an investor associated with them
-            const vouchers = await db.vouchers
-                .where({ projectId: currentProjectId })
-                .and(v => v.paidByInvestorId != null)
-                .reverse()
-                .toArray();
-
+            const vouchers = await db.settlement_vouchers.orderBy('id').reverse().toArray();
             if (vouchers.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4">لا توجد مصروفات مسجلة على المستثمرين حالياً.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-4">لا توجد سندات حالياً.</td></tr>`;
                 return;
             }
 
+            // Gather all unique IDs needed for lookups
             const projectIds = [...new Set(vouchers.map(v => v.projectId))];
             const investorIds = [...new Set(vouchers.map(v => v.paidByInvestorId))];
-            const accountIds = [...new Set(vouchers.map(v => v.accountId))];
+            const categoryIds = [...new Set(vouchers.map(v => v.categoryId))];
 
-            const [projects, investors, accounts] = await Promise.all([
+            // Fetch all lookup data in one go
+            const [projects, investors, categories] = await Promise.all([
                 db.projects.bulkGet(projectIds),
                 db.investors.bulkGet(investorIds),
-                db.accounts.bulkGet(accountIds)
+                db.accounts.bulkGet(categoryIds) // Use accounts table instead
             ]);
 
+            // Create maps for efficient lookup
             const projectMap = new Map(projects.filter(p => p).map(p => [p.id, p.name]));
             const investorMap = new Map(investors.filter(i => i).map(i => [i.id, i.name]));
-            const accountMap = new Map(accounts.filter(a => a).map(a => [a.id, a.name]));
+            const categoryMap = new Map(categories.filter(c => c).map(c => [c.id, c.name]));
 
             tableBody.innerHTML = '';
             vouchers.forEach(v => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td class="px-5 py-3">${projectMap.get(v.projectId) || 'N/A'}</td>
+                    <td class="px-5 py-3">${projectMap.get(v.projectId) || ''}</td>
                     <td class="px-5 py-3">${v.date}</td>
-                    <td class="px-5 py-3">${investorMap.get(v.paidByInvestorId) || 'N/A'}</td>
-                    <td class="px-5 py-3">${accountMap.get(v.accountId) || 'N/A'}</td>
-                    <td class="px-5 py-3">${formatCurrency(v.credit)}</td>
+                    <td class="px-5 py-3">${investorMap.get(v.paidByInvestorId) || ''}</td>
+                    <td class="px-5 py-3">${categoryMap.get(v.categoryId) || ''}</td>
+                    <td class="px-5 py-3">${v.amount}</td>
                     <td class="px-5 py-3">
                         <button class="delete-btn text-red-500" data-id="${v.id}">حذف</button>
                     </td>
@@ -102,47 +93,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 tableBody.appendChild(row);
             });
         } catch (error) {
-            console.error('Failed to render vouchers for settlement page:', error);
+            console.error('Failed to render settlement vouchers:', error);
         }
     };
 
     const handleFormSubmit = async (event) => {
         event.preventDefault();
-
-        // This form now creates a standard 'Payment' voucher in the main `vouchers` table.
         const voucherData = {
             projectId: Number(projectSelect.value),
             date: dateInput.value,
             paidByInvestorId: Number(investorSelect.value),
-            accountId: Number(categorySelect.value),
-            credit: Number(amountInput.value), // Payment vouchers use the 'credit' field for the amount
-            description: notesInput.value.trim(),
-            movementType: 'Payment',
-            debit: 0, // Debit is 0 for a payment voucher
-            cashboxId: null, // Not specified in this simplified form, can be left null
-            partyId: null, // Not specified in this simplified form
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            categoryId: Number(categorySelect.value),
+            amount: Number(amountInput.value),
+            notes: notesInput.value.trim(),
+            type: 'Payment', // As per spec, all entries here are expenses
         };
 
-        if (!voucherData.projectId || !voucherData.paidByInvestorId || !voucherData.accountId || !voucherData.credit) {
+        if (!voucherData.projectId || !voucherData.paidByInvestorId || !voucherData.categoryId || !voucherData.amount) {
             alert('الرجاء ملء جميع الحقول المطلوبة.');
             return;
         }
 
         try {
-            await db.transaction('rw', db.vouchers, async () => {
-                const lastVoucher = await db.vouchers.orderBy('id').last();
-                let lastNo = lastVoucher ? (String(lastVoucher.voucherNo).includes('-') ? parseInt(lastVoucher.voucherNo.split('-')[1], 10) : parseInt(lastVoucher.voucherNo, 10)) : 0;
-                voucherData.voucherNo = isNaN(lastNo) ? 1 : lastNo + 1;
-                await db.vouchers.add(voucherData);
-            });
-            alert('تم حفظ مصروف المشروع بنجاح.');
+            await db.settlement_vouchers.add(voucherData);
+            alert('تم حفظ سند الصرف بنجاح.');
             closeModal();
             renderVouchers();
         } catch (error) {
-            console.error('Failed to save voucher:', error);
-            alert(`حدث خطأ أثناء حفظ السند: ${error.stack}`);
+            console.error('Failed to save settlement voucher:', error);
         }
     };
 
@@ -154,8 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(e.target.classList.contains('delete-btn')) {
             const id = Number(e.target.dataset.id);
             if (confirm('هل أنت متأكد من حذف هذا السند؟')) {
-                // Now deleting from the main vouchers table
-                await db.vouchers.delete(id);
+                await db.settlement_vouchers.delete(id);
                 renderVouchers();
             }
         }
