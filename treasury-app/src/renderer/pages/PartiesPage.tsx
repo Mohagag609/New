@@ -3,7 +3,7 @@ import { usePartyStore } from '../store/usePartyStore';
 import { Button } from '@/components/ui/Button';
 import { PlusCircle } from 'lucide-react';
 import { PartyForm } from '@/components/parties/PartyForm';
-import type { Party } from '@/shared-types';
+import type { Party } from '@shared/shared-types';
 
 const PartiesPage: React.FC = () => {
   const { parties, loading, error, fetchParties, deleteParty } = usePartyStore();

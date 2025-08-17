@@ -1,7 +1,7 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CreateExpenseCategorySchema, type ExpenseCategory, type CreateExpenseCategoryDTO } from '@/shared-types';
+import { CreateExpenseCategorySchema, type ExpenseCategory, type CreateExpenseCategoryDTO } from '@shared/shared-types';
 import { useExpenseCategoryStore } from '@/store/useExpenseCategoryStore';
 
 import { Button } from '@/components/ui/Button';

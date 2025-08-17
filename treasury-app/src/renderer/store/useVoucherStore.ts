@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Voucher, CreateVoucherDTO, UpdateVoucherDTO } from '../../shared-types';
+import type { Voucher, CreateVoucherDTO, UpdateVoucherDTO } from '@shared/shared-types';
 
 // The list view returns a different shape, let's type it
 export interface VoucherListView extends Omit<Voucher, 'accountId' | 'partyId' | 'partnerId'> {

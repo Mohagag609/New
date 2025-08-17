@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ExpenseCategory, CreateExpenseCategoryDTO, UpdateExpenseCategoryDTO } from '../../shared-types';
+import type { ExpenseCategory, CreateExpenseCategoryDTO, UpdateExpenseCategoryDTO } from '@shared/shared-types';
 
 interface ExpenseCategoryState {
   categories: ExpenseCategory[];

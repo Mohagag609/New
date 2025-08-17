@@ -3,7 +3,7 @@ import { useExpenseCategoryStore } from '../store/useExpenseCategoryStore';
 import { Button } from '@/components/ui/Button';
 import { PlusCircle } from 'lucide-react';
 import { ExpenseCategoryForm } from '@/components/expenses/ExpenseCategoryForm';
-import type { ExpenseCategory } from '@/shared-types';
+import type { ExpenseCategory } from '@shared/shared-types';
 
 const ExpensesPage: React.FC = () => {
   const { categories, loading, error, fetchCategories, deleteCategory } = useExpenseCategoryStore();

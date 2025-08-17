@@ -3,7 +3,7 @@ import { useAccountStore } from '../store/useAccountStore';
 import { Button } from '@/components/ui/Button';
 import { PlusCircle } from 'lucide-react';
 import { AccountForm } from '@/components/accounts/AccountForm';
-import type { Account } from '@/shared-types';
+import type { Account } from '@shared/shared-types';
 
 const AccountsPage: React.FC = () => {
   const { accounts, loading, error, fetchAccounts, deleteAccount } = useAccountStore();

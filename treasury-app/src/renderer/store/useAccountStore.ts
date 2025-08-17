@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Account, CreateAccountDTO, UpdateAccountDTO } from '../../shared-types';
+import type { Account, CreateAccountDTO, UpdateAccountDTO } from '@shared/shared-types';
 
 interface AccountState {
   accounts: Account[];

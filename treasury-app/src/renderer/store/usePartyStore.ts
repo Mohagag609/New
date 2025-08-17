@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Party, CreatePartyDTO, UpdatePartyDTO } from '../../shared-types';
+import type { Party, CreatePartyDTO, UpdatePartyDTO } from '@shared/shared-types';
 
 interface PartyState {
   parties: Party[];

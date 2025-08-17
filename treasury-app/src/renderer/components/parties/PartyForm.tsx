@@ -1,7 +1,7 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CreatePartySchema, type Party, type CreatePartyDTO } from '@/shared-types';
+import { CreatePartySchema, type Party, type CreatePartyDTO } from '@shared/shared-types';
 import { usePartyStore } from '@/store/usePartyStore';
 
 import { Button } from '@/components/ui/Button';

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Partner, CreatePartnerDTO, UpdatePartnerDTO } from '../../shared-types';
+import type { Partner, CreatePartnerDTO, UpdatePartnerDTO } from '@shared/shared-types';
 
 interface PartnerState {
   partners: Partner[];

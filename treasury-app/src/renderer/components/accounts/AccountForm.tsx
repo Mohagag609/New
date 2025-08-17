@@ -1,7 +1,7 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CreateAccountSchema, type Account, type CreateAccountDTO } from '@/shared-types';
+import { CreateAccountSchema, type Account, type CreateAccountDTO } from '@shared/shared-types';
 import { useAccountStore } from '@/store/useAccountStore';
 
 import { Button } from '@/components/ui/Button';

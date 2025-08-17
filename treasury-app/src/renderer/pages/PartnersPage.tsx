@@ -3,7 +3,7 @@ import { usePartnerStore } from '../store/usePartnerStore';
 import { Button } from '@/components/ui/Button';
 import { PlusCircle } from 'lucide-react';
 import { PartnerForm } from '@/components/partners/PartnerForm';
-import type { Partner } from '@/shared-types';
+import type { Partner } from '@shared/shared-types';
 
 const PartnersPage: React.FC = () => {
   const { partners, loading, error, fetchPartners, deletePartner } = usePartnerStore();

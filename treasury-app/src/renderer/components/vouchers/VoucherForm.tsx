@@ -1,7 +1,7 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CreateVoucherSchema, type CreateVoucherDTO } from '@/shared-types';
+import { CreateVoucherSchema, type CreateVoucherDTO } from '@shared/shared-types';
 
 import { useVoucherStore } from '@/store/useVoucherStore';
 import { useAccountStore } from '@/store/useAccountStore';
