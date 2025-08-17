@@ -2,7 +2,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const page = document.getElementById('page-settlement-ratios');
     if (!page) return;
 
-    // --- DOM Elements ---
     const projectSelect = document.getElementById('ratio-project-select');
     const ratiosContainer = document.getElementById('ratios-container');
     const ratiosProjectName = document.getElementById('ratios-project-name');
@@ -13,19 +12,45 @@ document.addEventListener('DOMContentLoaded', () => {
     const addInvestorShareInput = document.getElementById('add-investor-share-input');
     const saveBtn = document.getElementById('save-ratios-btn');
 
-    let currentProjectLinks = [];
+    let currentRatios = [];
+    let allInvestors = [];
+    let investorMap = new Map();
 
     const updateTotal = () => {
-        const inputs = ratiosList.querySelectorAll('input');
-        const total = Array.from(inputs).reduce((sum, input) => sum + (Number(input.value) || 0), 0);
+        const total = currentRatios.reduce((sum, ratio) => sum + (Number(ratio.share) * 100 || 0), 0);
         ratiosTotalSpan.textContent = total.toFixed(2);
-        if (total > 99.99 && total < 100.01) {
-            ratiosTotalSpan.classList.remove('text-red-500');
-            ratiosTotalSpan.classList.add('text-green-500');
-        } else {
-            ratiosTotalSpan.classList.remove('text-green-500');
-            ratiosTotalSpan.classList.add('text-red-500');
-        }
+        ratiosTotalSpan.className = (total > 99.99 && total < 100.01) ? 'text-green-500' : 'text-red-500';
+    };
+
+    const renderRatios = () => {
+        ratiosList.innerHTML = '';
+        currentRatios.forEach((ratio, index) => {
+            const div = document.createElement('div');
+            div.className = 'flex items-center space-x-4 space-x-reverse p-1';
+            div.innerHTML = `
+                <label class="w-1/3">${investorMap.get(ratio.investorId)}</label>
+                <input type="number" step="0.01" min="0" max="100"
+                       class="ratio-input mt-1 block w-1/3 border-gray-300 rounded-md"
+                       data-index="${index}"
+                       value="${(ratio.share || 0) * 100}">
+                <span class="w-1/6">%</span>
+                <button class="delete-ratio-btn bg-red-500 text-white py-1 px-2 rounded" data-index="${index}">حذف</button>
+            `;
+            ratiosList.appendChild(div);
+        });
+
+        const linkedInvestorIds = new Set(currentRatios.map(r => r.investorId));
+        const unlinkedInvestors = allInvestors.filter(i => !linkedInvestorIds.has(i.id));
+
+        addInvestorSelect.innerHTML = '<option value="">اختر مستثمراً لإضافته...</option>';
+        unlinkedInvestors.forEach(inv => {
+            const option = document.createElement('option');
+            option.value = inv.id;
+            option.textContent = inv.name;
+            addInvestorSelect.appendChild(option);
+        });
+
+        updateTotal();
     };
 
     const handleProjectSelect = async () => {
@@ -38,61 +63,80 @@ document.addEventListener('DOMContentLoaded', () => {
         const project = await db.projects.get(projectId);
         ratiosProjectName.textContent = project.name;
 
-        currentProjectLinks = await db.project_investors.where({ projectId }).toArray();
-        const linkedInvestorIds = new Set(currentProjectLinks.map(l => l.investorId));
+        allInvestors = await db.investors.toArray();
+        investorMap = new Map(allInvestors.map(i => [i.id, i.name]));
 
-        const allInvestors = await db.investors.toArray();
-        const linkedInvestors = allInvestors.filter(i => linkedInvestorIds.has(i.id));
-        const unlinkedInvestors = allInvestors.filter(i => !linkedInvestorIds.has(i.id));
+        currentRatios = await db.project_investors.where({ projectId }).toArray();
 
-        const investorMap = new Map(linkedInvestors.map(i => [i.id, i.name]));
-
-        // Populate the "Add Investor" dropdown
-        addInvestorSelect.innerHTML = '<option value="">اختر مستثمراً لإضافته...</option>';
-        unlinkedInvestors.forEach(inv => {
-            const option = document.createElement('option');
-            option.value = inv.id;
-            option.textContent = inv.name;
-            addInvestorSelect.appendChild(option);
-        });
-
-        ratiosList.innerHTML = '';
-        currentProjectLinks.forEach(link => {
-            const div = document.createElement('div');
-            div.className = 'flex items-center space-x-4 space-x-reverse';
-            div.innerHTML = `
-                <label class="w-1/3">${investorMap.get(link.investorId)}</label>
-                <input type="number" step="0.01" min="0" max="100"
-                       class="ratio-input mt-1 block w-1/3 border-gray-300 rounded-md"
-                       data-link-id="${link.id}"
-                       value="${(link.share || 0) * 100}">
-                <span class="w-1/3">%</span>
-            `;
-            ratiosList.appendChild(div);
-        });
-
-        updateTotal();
+        renderRatios();
         ratiosContainer.classList.remove('hidden');
+    };
+
+    const handleAddInvestor = (e) => {
+        e.preventDefault();
+        const projectId = Number(projectSelect.value);
+        const investorId = Number(addInvestorSelect.value);
+        const sharePercent = Number(addInvestorShareInput.value) || 0;
+
+        if (!investorId) return alert('الرجاء اختيار مستثمر.');
+
+        currentRatios.push({
+            // No 'id' because it's a new record
+            projectId: projectId,
+            investorId: investorId,
+            share: sharePercent / 100
+        });
+
+        addInvestorForm.reset();
+        renderRatios();
+    };
+
+    const handleRatioInputChange = (e) => {
+        const index = Number(e.target.dataset.index);
+        const newSharePercent = Number(e.target.value) || 0;
+        if (currentRatios[index]) {
+            currentRatios[index].share = newSharePercent / 100;
+        }
+        updateTotal();
+    };
+
+    const handleRatioDelete = (e) => {
+        if (!e.target.classList.contains('delete-ratio-btn')) return;
+        const index = Number(e.target.dataset.index);
+        currentRatios.splice(index, 1);
+        renderRatios();
     };
 
     const handleSaveRatios = async () => {
         const total = parseFloat(ratiosTotalSpan.textContent);
         if (total < 99.99 || total > 100.01) {
-            alert('يجب أن يكون إجمالي النسب 100% بالضبط.');
-            return;
+            return alert('يجب أن يكون إجمالي النسب 100% بالضبط.');
         }
 
-        const inputs = ratiosList.querySelectorAll('input.ratio-input');
-        const updates = Array.from(inputs).map(input => {
-            return {
-                key: Number(input.dataset.linkId),
-                changes: { share: (Number(input.value) || 0) / 100 }
-            };
-        });
+        const projectId = Number(projectSelect.value);
 
         try {
-            await db.project_investors.bulkUpdate(updates);
+            // Use a transaction to ensure all operations succeed or fail together.
+            await db.transaction('rw', db.project_investors, async () => {
+                // First, clear existing ratios for this project to handle deletions.
+                const oldLinks = await db.project_investors.where({ projectId }).toArray();
+                const oldLinkIds = oldLinks.map(link => link.id);
+                if (oldLinkIds.length > 0) {
+                    await db.project_investors.bulkDelete(oldLinkIds);
+                }
+
+                // Now, add all the current ratios from the screen.
+                // We remove the id so Dexie creates new ones, preventing key conflicts.
+                const newRatiosToSave = currentRatios.map(({ id, ...rest }) => rest);
+
+                if (newRatiosToSave.length > 0) {
+                    await db.project_investors.bulkAdd(newRatiosToSave);
+                }
+            });
+
             alert('تم حفظ النسب بنجاح!');
+            // Refresh from DB to get new IDs
+            await handleProjectSelect();
         } catch (error) {
             console.error('Failed to save ratios:', error);
             alert('حدث خطأ أثناء حفظ النسب.');
@@ -111,40 +155,12 @@ document.addEventListener('DOMContentLoaded', () => {
         ratiosContainer.classList.add('hidden');
     };
 
-    const handleAddInvestorToProject = async (e) => {
-        e.preventDefault();
-        const projectId = Number(projectSelect.value);
-        const investorId = Number(addInvestorSelect.value);
-        const sharePercent = Number(addInvestorShareInput.value) || 0;
-
-        if (!projectId || !investorId) {
-            alert('الرجاء اختيار مشروع ومستثمر.');
-            return;
-        }
-
-        try {
-            await db.project_investors.add({
-                projectId: projectId,
-                investorId: investorId,
-                share: sharePercent / 100 // Convert percentage to ratio
-            });
-            // Refresh the entire view
-            handleProjectSelect();
-        } catch (error) {
-            console.error('Failed to add investor to project:', error);
-            if (error.name === 'ConstraintError') {
-                alert('هذا المستثمر مرتبط بالفعل بهذا المشروع.');
-            } else {
-                alert('فشل إضافة المستثمر للمشروع.');
-            }
-        }
-    };
-
     // --- Event Listeners ---
     projectSelect.addEventListener('change', handleProjectSelect);
-    addInvestorForm.addEventListener('submit', handleAddInvestorToProject);
+    addInvestorForm.addEventListener('submit', handleAddInvestor);
     saveBtn.addEventListener('click', handleSaveRatios);
-    ratiosList.addEventListener('input', updateTotal);
+    ratiosList.addEventListener('input', handleRatioInputChange);
+    ratiosList.addEventListener('click', handleRatioDelete);
 
     document.addEventListener('show', (e) => {
         if (e.detail.pageId === 'page-settlement-ratios') {
