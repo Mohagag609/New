@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const sinceDate = lastSettlement ? lastSettlement.settlementDate : '1970-01-01';
             const previousContributions = lastSettlement ? lastSettlement.contributions : {};
-            const previousBalances = lastSettlement ? lastSettlement.balances : {}; // Get previous balances
+            const previousBalances = (lastSettlement && lastSettlement.balances) ? lastSettlement.balances : {}; // Get previous balances safely
 
             // 2. Fetch data for the current period
             const [projectInvestors, allVouchers] = await Promise.all([
