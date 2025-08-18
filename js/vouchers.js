@@ -260,8 +260,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const onBehalfInvestorId = Number(onBehalfInvestorSelect.value);
 
-                const onBehalfInvestorId = Number(onBehalfInvestorSelect.value);
-
                 // If an investor is selected, flag this as a settlement expense
                 if (currentVoucherMode === 'Payment' && onBehalfInvestorId) {
                     voucherData.isSettlementExpense = true;
