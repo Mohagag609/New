@@ -39,9 +39,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // 2. Fetch data for the current period from the main vouchers table
             const [projectInvestors, expenseVouchers] = await Promise.all([
                 db.project_investors.where({ projectId }).toArray(),
-                // Use the new index to get all settlement expenses for this project in the current period
-                db.vouchers.where('[projectId+isSettlementExpense+date]')
-                    .between([projectId, 1, sinceDate], [projectId, 1, '9999-12-31'])
+                // Using a more explicit query to avoid issues with 'between' and same-day settlements.
+                db.vouchers
+                    .where({ projectId: projectId, isSettlementExpense: true })
+                    .and(v => v.date >= sinceDate)
                     .toArray()
             ]);
 
@@ -282,8 +283,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 2. Fetch all necessary data for the report from the main vouchers table
             const [vouchers, accounts, projectInvestors] = await Promise.all([
-                db.vouchers.where('[projectId+isSettlementExpense+date]')
-                    .between([projectId, 1, sinceDate], [projectId, 1, '9999-12-31'])
+                db.vouchers
+                    .where({ projectId: projectId, isSettlementExpense: true })
+                    .and(v => v.date >= sinceDate)
                     .toArray(),
                 db.accounts.toArray(),
                 db.project_investors.where({ projectId }).toArray()
