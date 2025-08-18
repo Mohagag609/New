@@ -260,47 +260,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const onBehalfInvestorId = Number(onBehalfInvestorSelect.value);
 
+                const onBehalfInvestorId = Number(onBehalfInvestorSelect.value);
+
+                // If an investor is selected, flag this as a settlement expense
                 if (currentVoucherMode === 'Payment' && onBehalfInvestorId) {
-                    const settlementProjectId = Number(localStorage.getItem('currentSettlementProjectId'));
-                    if (!settlementProjectId) return alert('Error: No settlement project selected.');
-
-                    const allTableNames = [
-                        'cashboxes', 'parties', 'accounts', 'vouchers',
-                        'projects', 'investors', 'project_investors',
-                        'settlement_vouchers', 'adjustments' // 'expense_categories' was removed from schema
-                    ];
-                    await db.transaction('rw', allTableNames, async () => {
-                        const lastVoucher = await db.vouchers.orderBy('id').last();
-                        let lastNo = lastVoucher ? (String(lastVoucher.voucherNo).includes('-') ? parseInt(lastVoucher.voucherNo.split('-')[1], 10) : parseInt(lastVoucher.voucherNo, 10)) : 0;
-                        voucherData.voucherNo = isNaN(lastNo) ? 1 : lastNo + 1;
-                        voucherData.description = `(مصروف تسوية) ${voucherData.description}`;
-                        const treasuryVoucherId = await db.vouchers.add(voucherData);
-
-                        const settlementVoucherData = {
-                            projectId: settlementProjectId,
-                            date: voucherData.date,
-                            accountId: voucherData.accountId,
-                            partyId: voucherData.partyId, // <-- Add partyId
-                            amount: voucherData.credit,
-                            paidByInvestorId: onBehalfInvestorId,
-                            description: `(من الخزينة) ${voucherData.description}`,
-                            treasuryVoucherId: treasuryVoucherId,
-                            type: 'Expense', // This was missing
-                            createdAt: now,
-                            updatedAt: now
-                        };
-                        await db.settlement_vouchers.add(settlementVoucherData);
-                    });
-                    alert('تم حفظ سند الصرف ومصروف التسوية بنجاح.');
-                } else {
-                    await db.transaction('rw', db.vouchers, async () => {
-                        const lastVoucher = await db.vouchers.orderBy('id').last();
-                        let lastNo = lastVoucher ? (String(lastVoucher.voucherNo).includes('-') ? parseInt(lastVoucher.voucherNo.split('-')[1], 10) : parseInt(lastVoucher.voucherNo, 10)) : 0;
-                        voucherData.voucherNo = isNaN(lastNo) ? 1 : lastNo + 1;
-                        await db.vouchers.add(voucherData);
-                    });
-                    alert('تم حفظ السند بنجاح.');
+                    voucherData.isSettlementExpense = true;
+                    voucherData.paidByInvestorId = onBehalfInvestorId;
                 }
+
+                // Unified save logic
+                await db.transaction('rw', db.vouchers, async () => {
+                    const lastVoucher = await db.vouchers.orderBy('id').last();
+                    let lastNo = lastVoucher ? (String(lastVoucher.voucherNo).includes('-') ? parseInt(lastVoucher.voucherNo.split('-')[1], 10) : parseInt(lastVoucher.voucherNo, 10)) : 0;
+                    voucherData.voucherNo = isNaN(lastNo) ? 1 : lastNo + 1;
+                    await db.vouchers.add(voucherData);
+                });
+                alert('تم حفظ السند بنجاح.');
             }
             closeModal();
             renderVouchers();

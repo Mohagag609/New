@@ -16,8 +16,8 @@ db.version(8).stores({
     project_investors: '++id, &[projectId+investorId], projectId, investorId',
 
     // Transactional Tables
-    vouchers: '++id, &voucherNo, [cashboxId+date], transferId, partyId, accountId, movementType, projectId, date',
-    settlement_vouchers: '++id, projectId, date, accountId, paidByInvestorId, receivedByInvestorId, partyId, type', // Added type
+    vouchers: '++id, &voucherNo, [cashboxId+date], transferId, partyId, accountId, movementType, projectId, date, isSettlementExpense, paidByInvestorId, [projectId+isSettlementExpense+date]',
+    settlement_vouchers: '++id', // DEPRECATED: This table is no longer in use as of the new architecture. All expenses are now in the main vouchers table.
     adjustments: '++id, projectId, date',
     project_settlements: '++id, [projectId+settlementDate]' // To store cumulative settlement snapshots
 });

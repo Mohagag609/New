@@ -36,27 +36,27 @@ document.addEventListener('DOMContentLoaded', () => {
             const previousContributions = lastSettlement ? lastSettlement.contributions : {};
             const previousBalances = (lastSettlement && lastSettlement.balances) ? lastSettlement.balances : {}; // Get previous balances safely
 
-            // 2. Fetch data for the current period
-            const [projectInvestors, allVouchers] = await Promise.all([
+            // 2. Fetch data for the current period from the main vouchers table
+            const [projectInvestors, expenseVouchers] = await Promise.all([
                 db.project_investors.where({ projectId }).toArray(),
-                db.settlement_vouchers.where('projectId').equals(projectId).and(v => v.date > sinceDate).toArray()
+                // Use the new index to get all settlement expenses for this project in the current period
+                db.vouchers.where('[projectId+isSettlementExpense+date]')
+                    .between([projectId, 1, sinceDate], [projectId, 1, '9999-12-31'])
+                    .toArray()
             ]);
-
-            // We only care about expense vouchers for period calculations
-            const expenseVouchers = allVouchers.filter(v => v.type !== 'Settlement');
 
             const allInvestorIds = [...new Set(projectInvestors.map(pi => pi.investorId))];
             const allInvestors = await db.investors.bulkGet(allInvestorIds);
             const investorMap = new Map(allInvestors.filter(i => i).map(i => [i.id, i.name]));
 
             // 3. Calculate totals for the CURRENT PERIOD
-            const periodExpenses = expenseVouchers.reduce((sum, v) => sum + v.amount, 0);
-            totalExpensesSpan.textContent = formatCurrency(periodExpenses); // This now shows period expenses
+            const periodExpenses = expenseVouchers.reduce((sum, v) => sum + v.credit, 0); // Expenses are stored in 'credit'
+            totalExpensesSpan.textContent = formatCurrency(periodExpenses);
 
             const paidByInvestorThisPeriod = new Map();
             expenseVouchers.forEach(v => {
                 const currentPaid = paidByInvestorThisPeriod.get(v.paidByInvestorId) || 0;
-                paidByInvestorThisPeriod.set(v.paidByInvestorId, currentPaid + v.amount);
+                paidByInvestorThisPeriod.set(v.paidByInvestorId, currentPaid + v.credit); // Use 'credit' for the amount
             });
 
             // 4. Populate the "Investor Expenses Report" (now for this period only)
@@ -213,11 +213,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const newContributions = {};
                 const finalBalances = {};
                 settlementData.forEach(data => {
-                    // Note: 'prevContribution' is not directly available here, but we can recalculate it
-                    // for saving, though it's already correct in the settlementData object.
-                    // The important part is saving the new final balance.
                     const prevContribution = (lastSettlement && lastSettlement.contributions[data.investorId]) ? lastSettlement.contributions[data.investorId] : 0;
-                    newContributions[data.investorId] = prevContribution + data.fairShare;
+                    newContributions[data.investorId] = prevContribution + data.fairShareThisPeriod; // Use fairShareThisPeriod
                     finalBalances[data.investorId] = data.balance; // 'balance' is the new final balance
                 });
 
@@ -283,10 +280,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const sinceDate = lastSettlement ? lastSettlement.settlementDate : '1970-01-01';
             const previousContributions = lastSettlement ? lastSettlement.contributions : {};
 
-            // 2. Fetch all necessary data for the report
+            // 2. Fetch all necessary data for the report from the main vouchers table
             const [vouchers, accounts, projectInvestors] = await Promise.all([
-                // Fetch ALL voucher types since the last settlement date
-                db.settlement_vouchers.where('projectId').equals(projectId).and(v => v.date > sinceDate).toArray(),
+                db.vouchers.where('[projectId+isSettlementExpense+date]')
+                    .between([projectId, 1, sinceDate], [projectId, 1, '9999-12-31'])
+                    .toArray(),
                 db.accounts.toArray(),
                 db.project_investors.where({ projectId }).toArray()
             ]);
@@ -306,33 +304,16 @@ document.addEventListener('DOMContentLoaded', () => {
             investors.forEach(inv => transactionsByInvestor.set(inv.id, []));
 
             vouchers.forEach(v => {
-                if (v.type === 'Settlement') {
-                    // Settlement involves two investors
-                    if (transactionsByInvestor.has(v.paidByInvestorId)) {
-                        transactionsByInvestor.get(v.paidByInvestorId).push({
-                            date: v.date,
-                            type: 'دفعة تسوية',
-                            description: `إلى ${investorMap.get(v.receivedByInvestorId)}`,
-                            amount: v.amount // This is a payment, adding to their contribution
-                        });
-                    }
-                    if (transactionsByInvestor.has(v.receivedByInvestorId)) {
-                        transactionsByInvestor.get(v.receivedByInvestorId).push({
-                            date: v.date,
-                            type: 'قبض تسوية',
-                            description: `من ${investorMap.get(v.paidByInvestorId)}`,
-                            amount: -v.amount // This is a receipt, reducing their net payment for the period
-                        });
-                    }
-                } else { // Expense voucher
-                    if (transactionsByInvestor.has(v.paidByInvestorId)) {
-                        transactionsByInvestor.get(v.paidByInvestorId).push({
-                            date: v.date,
-                            type: 'مصروف',
-                            description: `${accountMap.get(v.categoryId) || 'غير معروف'} - ${v.notes || ''}`,
-                            amount: v.amount // Direct expense payment
-                        });
-                    }
+                // The detailed report now only shows settlement expenses.
+                // The balancing settlement transactions are not shown here anymore, as they are not part of this table.
+                // This simplifies the report to just show the expenses that make up the settlement.
+                if (v.isSettlementExpense && transactionsByInvestor.has(v.paidByInvestorId)) {
+                    transactionsByInvestor.get(v.paidByInvestorId).push({
+                        date: v.date,
+                        type: 'مصروف تسوية',
+                        description: `${accountMap.get(v.accountId) || 'غير معروف'} - ${v.description || ''}`,
+                        amount: v.credit // Use credit for the amount
+                    });
                 }
             });
 
