@@ -2,23 +2,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const page = document.getElementById('page-reports');
     if (!page) return;
 
-    const currentProjectId = Number(localStorage.getItem('currentProjectId'));
-    if (!currentProjectId) {
-        // Hide the generate button if no project is selected
-        document.getElementById('generate-report-btn').style.display = 'none';
-        return;
-    }
-
     // --- DOM Elements ---
-    const cashboxSelect = document.getElementById('report-cashbox');
     const reportTabs = document.getElementById('report-tabs');
     const filterSections = document.querySelectorAll('.report-filter-section');
-
-    const fromDateInput = document.getElementById('report-from-date');
-    const toDateInput = document.getElementById('report-to-date');
-    const fromVoucherInput = document.getElementById('report-from-voucher');
-    const toVoucherInput = document.getElementById('report-to-voucher');
-    const voucherNoInput = document.getElementById('report-voucher-no');
     const generateBtn = document.getElementById('generate-report-btn');
     const clearBtn = document.getElementById('clear-report-btn');
     const exportBtn = document.getElementById('export-csv-btn');
@@ -26,123 +12,99 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultsDiv = document.getElementById('report-results');
     const summaryDiv = document.getElementById('report-summary');
     const tableBody = document.getElementById('report-table-body');
+    const pageTitle = document.querySelector('#page-reports h2');
+
+    // Cashbox report filters
+    const cashboxSelect = document.getElementById('report-cashbox');
+    const fromDateInput = document.getElementById('report-from-date');
+    const toDateInput = document.getElementById('report-to-date');
+
+    // Party report filters
+    const partySelect = document.getElementById('report-party');
+    const partyFromDateInput = document.getElementById('report-party-from-date');
+    const partyToDateInput = document.getElementById('report-party-to-date');
 
     let reportData = []; // To hold the data for CSV export
-    let activeTab = 'date'; // Default active tab
+    let activeTab = 'cashbox'; // Default active tab
 
     const formatCurrency = (amount) => {
         const currency = localStorage.getItem('currency') || 'EGP';
         return new Intl.NumberFormat('ar-SA', { style: 'currency', currency: currency }).format(amount);
     };
 
-    const parseVoucherNo = (voucherNo) => {
-        if (typeof voucherNo === 'number') return voucherNo;
-        if (!voucherNo) return 0;
-        if (typeof voucherNo === 'string' && voucherNo.includes('-')) {
-            return parseInt(voucherNo.split('-')[1], 10) || 0;
+    const populateDropdown = async (selectElement, getItems, placeholder, nameField = 'name') => {
+        try {
+            const items = await getItems();
+            selectElement.innerHTML = `<option value="">${placeholder}</option>`;
+            items.forEach(item => {
+                if (item.isActive !== false) {
+                    const option = document.createElement('option');
+                    option.value = item.id;
+                    option.textContent = item[nameField];
+                    selectElement.appendChild(option);
+                }
+            });
+        } catch (error) {
+            console.error(`Failed to populate ${selectElement.id}:`, error);
         }
-        const num = parseInt(voucherNo, 10);
-        return isNaN(num) ? 0 : num;
     };
 
     const initializePage = async () => {
-        const cashboxes = await db.cashboxes.where({ projectId: currentProjectId }).toArray();
-        cashboxSelect.innerHTML = '<option value="">اختر خزنة...</option>';
-        cashboxes.forEach(c => {
-            if(c.isActive) {
-                const option = document.createElement('option');
-                option.value = c.id;
-                option.textContent = c.name;
-                cashboxSelect.appendChild(option);
-            }
-        });
+        await populateDropdown(cashboxSelect, () => db.cashboxes.toArray(), 'اختر خزنة...');
+        await populateDropdown(partySelect, () => db.parties.toArray(), 'اختر طرف...');
         clearReport();
     };
 
     const clearReport = () => {
         const today = new Date();
         const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
         toDateInput.valueAsDate = today;
         fromDateInput.valueAsDate = firstDayOfMonth;
-        fromVoucherInput.value = '';
-        toVoucherInput.value = '';
-        voucherNoInput.value = '';
+        partyToDateInput.valueAsDate = today;
+        partyFromDateInput.valueAsDate = firstDayOfMonth;
+
         resultsDiv.classList.add('hidden');
         tableBody.innerHTML = '';
         reportData = [];
     };
 
-    const generateReport = async () => {
+    const generateCashboxReport = async () => {
         const cashboxId = Number(cashboxSelect.value);
         if (!cashboxId) return alert('الرجاء تحديد خزنة أولاً.');
 
+        const fromDate = fromDateInput.value;
+        const toDate = toDateInput.value;
+        if (!fromDate || !toDate) return alert('الرجاء تحديد نطاق التاريخ.');
+
         try {
-            let periodVouchers = [];
-            let reportStartDate;
             const cashbox = await db.cashboxes.get(cashboxId);
             if (!cashbox) return alert('لم يتم العثور على الخزنة.');
 
-            if (activeTab === 'single-voucher') {
-                const voucherNo = Number(voucherNoInput.value.trim());
-                if (!voucherNo || isNaN(voucherNo)) return alert('الرجاء إدخال رقم سند صالح.');
+            const periodVouchers = await db.vouchers
+                .where('date').between(fromDate, toDate, true, true)
+                .and(v => v.cashboxId === cashboxId)
+                .sortBy('date');
 
-                const voucher = await db.vouchers.where({ voucherNo: voucherNo, projectId: currentProjectId }).first();
-                if (!voucher) return alert('لم يتم العثور على سند بهذا الرقم في المشروع الحالي.');
-                if (voucher.cashboxId !== cashboxId) return alert('هذا السند لا يخص الخزنة المحددة.');
-
-                periodVouchers = [voucher];
-                reportStartDate = voucher.date;
-            } else if (activeTab === 'date') {
-                const fromDate = fromDateInput.value;
-                const toDate = toDateInput.value;
-                if (!fromDate || !toDate) return alert('الرجاء تحديد نطاق التاريخ.');
-
-                periodVouchers = await db.vouchers
-                    .where('[cashboxId+date]')
-                    .between([cashboxId, fromDate], [cashboxId, toDate])
-                    .and(v => v.projectId === currentProjectId)
-                    .toArray();
-                reportStartDate = fromDate;
-            } else if (activeTab === 'voucher-range') {
-                const fromVoucher = Number(fromVoucherInput.value);
-                const toVoucher = Number(toVoucherInput.value);
-                if (!fromVoucher || !toVoucher || isNaN(fromVoucher) || isNaN(toVoucher)) {
-                    return alert('الرجاء إدخال نطاق أرقام سندات صالح.');
-                }
-
-                const allProjectVouchers = await db.vouchers.where({ projectId: currentProjectId, cashboxId: cashboxId }).toArray();
-                periodVouchers = allProjectVouchers
-                    .filter(v => {
-                        const num = parseVoucherNo(v.voucherNo);
-                        return num >= fromVoucher && num <= toVoucher;
-                    })
-                    .sort((a, b) => parseVoucherNo(a.voucherNo) - parseVoucherNo(b.voucherNo));
-
-                if (periodVouchers.length === 0) return alert('لم يتم العثور على سندات في هذا النطاق.');
-                reportStartDate = periodVouchers[0].date;
-            }
-
-            // 2. Calculate balance before the report's start date
-            const priorVouchers = await db.vouchers.where({ projectId: currentProjectId })
-                .and(v => v.cashboxId === cashboxId && v.date < reportStartDate)
+            const priorVouchers = await db.vouchers
+                .where('date').below(fromDate)
+                .and(v => v.cashboxId === cashboxId)
                 .toArray();
 
-            const netPrior = priorVouchers.reduce((sum, v) => sum + v.debit - v.credit, 0);
-            const openingBalance = cashbox.openingBalance + netPrior;
+            const netPrior = priorVouchers.reduce((sum, v) => sum + (v.debit || 0) - (v.credit || 0), 0);
+            const openingBalance = (cashbox.openingBalance || 0) + netPrior;
 
-            // 4. Render report
             const cashboxName = cashboxSelect.options[cashboxSelect.selectedIndex].text;
             summaryDiv.innerHTML = `<strong>تقرير الخزنة:</strong> ${cashboxName}`;
 
             tableBody.innerHTML = '';
-            reportData = []; // Reset data for export
+            reportData = [];
             let runningBalance = openingBalance;
 
-            // Add Opening Balance row to the table
             const openingBalanceRow = {
-                date: reportStartDate,
+                date: fromDate,
                 voucherNo: '-',
-                description: 'رصيد ما سبق',
+                description: 'رصيد افتتاحي/مرحل',
                 debit: '',
                 credit: '',
                 balance: openingBalance
@@ -160,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
 
             periodVouchers.forEach(v => {
-                runningBalance += v.debit - v.credit;
+                runningBalance += (v.debit || 0) - (v.credit || 0);
                 const rowData = {
                     date: v.date,
                     voucherNo: v.voucherNo,
@@ -170,7 +132,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     balance: runningBalance
                 };
                 reportData.push(rowData);
-
                 tableBody.innerHTML += `
                     <tr>
                         <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">${rowData.date}</td>
@@ -183,35 +144,136 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
             });
 
-            // Add summary footer row
-            const table = tableBody.parentElement; // Get the <table> element
+            const table = tableBody.parentElement;
             let tfoot = table.querySelector('tfoot');
-            if (tfoot) tfoot.remove(); // Remove old footer if it exists
-
+            if (tfoot) tfoot.remove();
             tfoot = document.createElement('tfoot');
-            const footerText = runningBalance >= 0
-                ? `الخزينة الآن بها مبلغ: ${formatCurrency(runningBalance)}`
-                : `الخزينة الآن عليها مبلغ: ${formatCurrency(runningBalance)}`;
-
-            tfoot.innerHTML = `
-                <tr class="bg-gray-200 font-bold text-lg">
-                    <td colspan="6" class="px-5 py-4 text-center">${footerText}</td>
-                </tr>
-            `;
+            const footerText = `الرصيد النهائي: ${formatCurrency(runningBalance)}`;
+            tfoot.innerHTML = `<tr class="bg-gray-200 font-bold text-lg"><td colspan="6" class="px-5 py-4 text-center">${footerText}</td></tr>`;
             table.appendChild(tfoot);
 
             resultsDiv.classList.remove('hidden');
-
         } catch (error) {
-            console.error('Failed to generate report:', error);
-            let userMessage = 'حدث خطأ أثناء إنشاء التقرير.';
-            if (error.name) {
-                userMessage += `\n\nالنوع: ${error.name}`;
+            console.error('Failed to generate cashbox report:', error);
+            alert(`حدث خطأ أثناء إنشاء تقرير الخزنة: ${error.message}`);
+        }
+    };
+
+    const generatePartyReport = async () => {
+        const partyId = Number(partySelect.value);
+        if (!partyId) return alert('الرجاء تحديد طرف أولاً.');
+
+        const fromDate = partyFromDateInput.value;
+        const toDate = partyToDateInput.value;
+        if (!fromDate || !toDate) return alert('الرجاء تحديد نطاق التاريخ.');
+
+        try {
+            const party = await db.parties.get(partyId);
+            if (!party) return alert('لم يتم العثور على الطرف.');
+
+            const periodVouchers = await db.vouchers
+                .where('date').between(fromDate, toDate, true, true)
+                .and(v => v.partyId === partyId)
+                .sortBy('date');
+
+            const priorVouchers = await db.vouchers
+                .where('date').below(fromDate)
+                .and(v => v.partyId === partyId)
+                .toArray();
+
+            // Debit is money from party (they owe us less), Credit is money to party (they owe us more)
+            const netPrior = priorVouchers.reduce((sum, v) => sum + (v.credit || 0) - (v.debit || 0), 0);
+            const openingBalance = netPrior; // Assuming opening balance starts from 0
+
+            const partyName = partySelect.options[partySelect.selectedIndex].text;
+            summaryDiv.innerHTML = `<strong>كشف حساب:</strong> ${partyName}`;
+
+            tableBody.innerHTML = '';
+            reportData = [];
+            let runningBalance = openingBalance;
+
+            const openingBalanceRow = {
+                date: fromDate,
+                voucherNo: '-',
+                description: 'رصيد افتتاحي/مرحل',
+                debit: '',
+                credit: '',
+                balance: openingBalance
+            };
+            reportData.push(openingBalanceRow);
+            tableBody.innerHTML += `
+                <tr class="bg-gray-100 font-semibold">
+                    <td class="px-5 py-3 border-b border-gray-200 text-sm">${openingBalanceRow.date}</td>
+                    <td class="px-5 py-3 border-b border-gray-200 text-sm">${openingBalanceRow.voucherNo}</td>
+                    <td class="px-5 py-3 border-b border-gray-200 text-sm">${openingBalanceRow.description}</td>
+                    <td class="px-5 py-3 border-b border-gray-200 text-sm"></td>
+                    <td class="px-5 py-3 border-b border-gray-200 text-sm"></td>
+                    <td class="px-5 py-3 border-b border-gray-200 text-sm">${new Intl.NumberFormat().format(openingBalanceRow.balance)}</td>
+                </tr>
+            `;
+
+            periodVouchers.forEach(v => {
+                runningBalance += (v.credit || 0) - (v.debit || 0);
+                const rowData = {
+                    date: v.date,
+                    voucherNo: v.voucherNo,
+                    description: v.description,
+                    debit: v.debit,
+                    credit: v.credit,
+                    balance: runningBalance
+                };
+                reportData.push(rowData);
+                tableBody.innerHTML += `
+                    <tr>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">${rowData.date}</td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">${rowData.voucherNo}</td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm">${rowData.description}</td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm text-green-600">${rowData.debit > 0 ? new Intl.NumberFormat().format(rowData.debit) : '-'}</td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm text-red-600">${rowData.credit > 0 ? new Intl.NumberFormat().format(rowData.credit) : '-'}</td>
+                        <td class="px-5 py-3 border-b border-gray-200 bg-white text-sm font-semibold">${new Intl.NumberFormat().format(rowData.balance)}</td>
+                    </tr>
+                `;
+            });
+
+            const table = tableBody.parentElement;
+            let tfoot = table.querySelector('tfoot');
+            if (tfoot) tfoot.remove();
+            tfoot = document.createElement('tfoot');
+
+            let footerText = '';
+            if (party.type === 'Customer') {
+                if (runningBalance > 0) {
+                    footerText = `الرصيد النهائي: ${formatCurrency(runningBalance)} (رصيد دائن للعميل)`;
+                } else if (runningBalance < 0) {
+                    footerText = `الرصيد النهائي: ${formatCurrency(Math.abs(runningBalance))} (رصيد مدين على العميل)`;
+                } else {
+                    footerText = 'الرصيد النهائي: 0 (متوازن)';
+                }
+            } else { // Supplier
+                if (runningBalance > 0) {
+                    footerText = `الرصيد النهائي: ${formatCurrency(runningBalance)} (مستحق للمورد)`;
+                } else if (runningBalance < 0) {
+                    footerText = `الرصيد النهائي: ${formatCurrency(Math.abs(runningBalance))} (رصيد مدين من المورد)`;
+                } else {
+                    footerText = 'الرصيد النهائي: 0 (متوازن)';
+                }
             }
-            if (error.message) {
-                userMessage += `\nالرسالة: ${error.message}`;
-            }
-            alert(userMessage);
+
+            tfoot.innerHTML = `<tr class="bg-gray-200 font-bold text-lg"><td colspan="6" class="px-5 py-4 text-center">${footerText}</td></tr>`;
+            table.appendChild(tfoot);
+
+            resultsDiv.classList.remove('hidden');
+        } catch (error) {
+            console.error('Failed to generate party report:', error);
+            alert(`حدث خطأ أثناء إنشاء كشف الحساب: ${error.message}`);
+        }
+    };
+
+    const generateReport = () => {
+        if (activeTab === 'cashbox') {
+            generateCashboxReport();
+        } else if (activeTab === 'party') {
+            generatePartyReport();
         }
     };
 
@@ -225,10 +287,10 @@ document.addEventListener('DOMContentLoaded', () => {
             headers.join(','),
             ...reportData.map(row => [
                 row.date,
-                `"${row.voucherNo}"`, // Enclose voucher number in quotes in case it contains special chars
-                `"${row.description.replace(/"/g, '""')}"`, // Escape double quotes
-                row.debit,
-                row.credit,
+                `"${row.voucherNo}"`,
+                `"${row.description.replace(/"/g, '""')}"`,
+                row.debit || 0,
+                row.credit || 0,
                 row.balance
             ].join(','))
         ].join('\n');
@@ -237,22 +299,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
         link.setAttribute('href', url);
-        const cashboxName = cashboxSelect.options[cashboxSelect.selectedIndex].text;
-        link.setAttribute('download', `Ledger_${cashboxName}_${fromDateInput.value}_to_${toDateInput.value}.csv`);
+        const fileName = activeTab === 'cashbox'
+            ? `Ledger_${cashboxSelect.options[cashboxSelect.selectedIndex].text}.csv`
+            : `Statement_${partySelect.options[partySelect.selectedIndex].text}.csv`;
+        link.setAttribute('download', fileName);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-    };
-
-    const handleSearchTypeChange = () => {
-        const searchType = document.querySelector('input[name="report-search-type"]:checked').value;
-        if (searchType === 'date') {
-            dateFiltersDiv.classList.remove('hidden');
-            voucherFilterDiv.classList.add('hidden');
-        } else {
-            dateFiltersDiv.classList.add('hidden');
-            voucherFilterDiv.classList.remove('hidden');
-        }
     };
 
     const handleTabClick = (event) => {
@@ -261,22 +314,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         activeTab = target.dataset.tab;
 
-        // Update active tab styles
-        reportTabs.querySelectorAll('.report-tab').forEach(tab => {
-            tab.classList.remove('active-tab', 'border-blue-500', 'text-blue-600');
-            tab.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
-        });
-        target.classList.add('active-tab', 'border-blue-500', 'text-blue-600');
-        target.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+        reportTabs.querySelectorAll('.report-tab').forEach(tab => tab.classList.remove('active-tab'));
+        target.classList.add('active-tab');
 
-        // Show/hide filter sections
         filterSections.forEach(section => {
-            if (section.id === `report-filters-${activeTab}`) {
-                section.classList.remove('hidden');
-            } else {
-                section.classList.add('hidden');
-            }
+            section.classList.toggle('hidden', section.id !== `report-filters-${activeTab}`);
         });
+
+        pageTitle.textContent = activeTab === 'cashbox' ? 'تقرير دفتر الخزنة' : 'كشف حساب طرف';
+        clearReport();
     };
 
     // --- Event Listeners ---
@@ -285,7 +331,8 @@ document.addEventListener('DOMContentLoaded', () => {
     clearBtn.addEventListener('click', clearReport);
     exportBtn.addEventListener('click', exportToCSV);
     printBtn.addEventListener('click', () => {
-        printContent('report-results', 'تقرير دفتر الخزنة');
+        const title = activeTab === 'cashbox' ? 'تقرير دفتر الخزنة' : 'كشف حساب طرف';
+        printContent('report-results', title);
     });
 
     document.addEventListener('show', (e) => {

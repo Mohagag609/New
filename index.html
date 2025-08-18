@@ -483,44 +483,47 @@
                     <!-- Report Type Tabs -->
                     <div class="border-b border-gray-200">
                         <nav class="-mb-px flex space-x-4 space-x-reverse" id="report-tabs">
-                            <button data-tab="date" class="report-tab active-tab py-4 px-1 border-b-2 font-medium text-sm">تقرير حسب التاريخ</button>
-                            <button data-tab="voucher-range" class="report-tab py-4 px-1 border-b-2 font-medium text-sm">تقرير بأرقام السندات</button>
-                            <button data-tab="single-voucher" class="report-tab py-4 px-1 border-b-2 font-medium text-sm">بحث عن سند معين</button>
+                            <button data-tab="cashbox" class="report-tab active-tab py-4 px-1 border-b-2 font-medium text-sm">تقرير دفتر الخزنة</button>
+                            <button data-tab="party" class="report-tab py-4 px-1 border-b-2 font-medium text-sm">كشف حساب طرف</button>
                         </nav>
                     </div>
 
                     <!-- Filter Sections -->
                     <div class="pt-4">
-                        <div class="mb-4">
-                            <label for="report-cashbox" class="block text-sm font-medium text-gray-700 text-right">الخزنة</label>
-                            <select id="report-cashbox" class="mt-1 block w-full md:w-1/3 border-gray-300 rounded-md shadow-sm"></select>
-                        </div>
-
-                        <div id="report-filters-date" class="report-filter-section grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Cashbox Report Filters -->
+                        <div id="report-filters-cashbox" class="report-filter-section space-y-4">
                             <div>
-                                <label for="report-from-date">من تاريخ</label>
-                                <input type="date" id="report-from-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                <label for="report-cashbox" class="block text-sm font-medium text-gray-700 text-right">الخزنة</label>
+                                <select id="report-cashbox" class="mt-1 block w-full md:w-1/3 border-gray-300 rounded-md shadow-sm"></select>
                             </div>
-                            <div>
-                                <label for="report-to-date">إلى تاريخ</label>
-                                <input type="date" id="report-to-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                            </div>
-                        </div>
-
-                        <div id="report-filters-voucher-range" class="report-filter-section hidden grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label for="report-from-voucher">من سند رقم</label>
-                                <input type="number" id="report-from-voucher" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                            </div>
-                            <div>
-                                <label for="report-to-voucher">إلى سند رقم</label>
-                                <input type="number" id="report-to-voucher" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="report-from-date">من تاريخ</label>
+                                    <input type="date" id="report-from-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                </div>
+                                <div>
+                                    <label for="report-to-date">إلى تاريخ</label>
+                                    <input type="date" id="report-to-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                </div>
                             </div>
                         </div>
 
-                        <div id="report-filters-single-voucher" class="report-filter-section hidden">
-                             <label for="report-voucher-no">رقم السند</label>
-                             <input type="number" id="report-voucher-no" class="mt-1 block w-full md:w-1/3 border-gray-300 rounded-md shadow-sm">
+                        <!-- Party Account Statement Filters -->
+                        <div id="report-filters-party" class="report-filter-section hidden space-y-4">
+                            <div>
+                                <label for="report-party" class="block text-sm font-medium text-gray-700 text-right">الطرف (عميل/مورد)</label>
+                                <select id="report-party" class="mt-1 block w-full md:w-1/3 border-gray-300 rounded-md shadow-sm"></select>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="report-party-from-date">من تاريخ</label>
+                                    <input type="date" id="report-party-from-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                </div>
+                                <div>
+                                    <label for="report-party-to-date">إلى تاريخ</label>
+                                    <input type="date" id="report-party-to-date" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
