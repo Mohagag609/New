@@ -279,12 +279,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         const settlementVoucherData = {
                             projectId: settlementProjectId,
                             date: voucherData.date,
-                        accountId: voucherData.accountId,
+                            accountId: voucherData.accountId,
                             partyId: voucherData.partyId, // <-- Add partyId
                             amount: voucherData.credit,
                             paidByInvestorId: onBehalfInvestorId,
                             description: `(من الخزينة) ${voucherData.description}`,
                             treasuryVoucherId: treasuryVoucherId,
+                            type: 'Expense', // This was missing
                             createdAt: now,
                             updatedAt: now
                         };
