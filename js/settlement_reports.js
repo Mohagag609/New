@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const sinceDate = lastSettlement ? lastSettlement.settlementDate : '1970-01-01';
             const previousContributions = lastSettlement ? lastSettlement.contributions : {};
+            const previousBalances = lastSettlement ? lastSettlement.balances : {}; // Get previous balances
 
             // 2. Fetch data for the current period
             const [projectInvestors, allVouchers] = await Promise.all([
@@ -78,20 +79,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 const investorId = pi.investorId;
                 const settlementRatio = useEqualSplit && projectInvestors.length > 0 ? (1 / projectInvestors.length) : (pi.share || 0);
 
-                const prevContribution = previousContributions[investorId] || 0;
+                const prevBalance = previousBalances[investorId] || 0;
                 const paidThisPeriod = paidByInvestorThisPeriod.get(investorId) || 0;
                 const fairShareThisPeriod = periodExpenses * settlementRatio;
 
-                // The balance for the NEW settlement is based on this period's transactions
-                const balance = paidThisPeriod - fairShareThisPeriod;
+                // The balance for the NEW settlement now includes the previous balance
+                const balance = prevBalance + paidThisPeriod - fairShareThisPeriod;
 
                 // The final contribution if settled, will be prevContribution + fairShareThisPeriod
+                const prevContribution = previousContributions[investorId] || 0;
                 const finalContribution = prevContribution + fairShareThisPeriod;
 
                 settlementData.push({
                     investorId: investorId,
                     investorName: investorMap.get(investorId),
-                    prevContribution,
+                    prevBalance: prevBalance, // Use this for the "Previous Balance" column
                     paidThisPeriod,
                     fairShareThisPeriod,
                     balance,
@@ -107,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 finalSettlementTbody.innerHTML += `
                     <tr>
                         <td class="px-5 py-3">${data.investorName}</td>
-                        <td class="px-5 py-3">${formatCurrency(data.prevContribution)}</td>
+                        <td class="px-5 py-3">${formatCurrency(data.prevBalance)}</td>
                         <td class="px-5 py-3">${formatCurrency(data.paidThisPeriod)}</td>
                         <td class="px-5 py-3">${formatCurrency(data.fairShareThisPeriod)}</td>
                         <td class="px-5 py-3 font-bold ${balanceClass}">${formatCurrency(data.balance)}</td>
@@ -200,12 +202,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     await db.settlement_vouchers.bulkAdd(newVouchers);
                 }
 
-                // 3. Calculate the new total effective contributions
+                // 3. Calculate the new total effective contributions and final balances
                 const newContributions = {};
+                const finalBalances = {};
                 settlementData.forEach(data => {
-                    const prevContribution = previousContributions[data.investorId] || 0;
-                    // The new total contribution is the previous total + their fair share of this period's expenses
+                    // Note: 'prevContribution' is not directly available here, but we can recalculate it
+                    // for saving, though it's already correct in the settlementData object.
+                    // The important part is saving the new final balance.
+                    const prevContribution = (lastSettlement && lastSettlement.contributions[data.investorId]) ? lastSettlement.contributions[data.investorId] : 0;
                     newContributions[data.investorId] = prevContribution + data.fairShare;
+                    finalBalances[data.investorId] = data.balance; // 'balance' is the new final balance
                 });
 
                 // 4. Save the new settlement snapshot
@@ -213,6 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     projectId,
                     settlementDate: today,
                     contributions: newContributions,
+                    balances: finalBalances, // Save the calculated balances
                     notes: `Settlement executed on ${today}`
                 });
             });
