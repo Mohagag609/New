@@ -163,6 +163,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const today = new Date().toISOString().split('T')[0];
 
         try {
+            // Guard against multiple settlements on the same day for the same project
+            const existingSettlementToday = await db.project_settlements.where({ projectId: projectId, settlementDate: today }).first();
+            if (existingSettlementToday) {
+                alert('لا يمكن تنفيذ أكثر من تسوية واحدة في نفس اليوم لنفس المشروع. إذا كنت بحاجة لإجراء تغييرات، يمكنك حذف التسوية القديمة من قاعدة البيانات أو الانتظار لليوم التالي.');
+                return;
+            }
+
             // Start a database transaction
             await db.transaction('rw', db.settlement_vouchers, db.project_settlements, async () => {
                 // 1. Fetch the most recent settlement to get previous contributions
