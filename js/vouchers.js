@@ -279,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const settlementVoucherData = {
                             projectId: settlementProjectId,
                             date: voucherData.date,
-                            categoryId: voucherData.accountId,
+                        accountId: voucherData.accountId,
                             partyId: voucherData.partyId, // <-- Add partyId
                             amount: voucherData.credit,
                             paidByInvestorId: onBehalfInvestorId,
